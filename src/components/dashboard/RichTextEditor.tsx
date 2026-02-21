@@ -41,6 +41,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { getSafeImageSrc } from "@/lib/images";
 import {
     Dialog,
     DialogContent,
@@ -212,7 +213,7 @@ function ImageDialog({
                             )}
                         >
                             {url ? (
-                                <img src={url} alt="Preview" className="h-full w-full object-cover rounded-lg" />
+                                <img src={getSafeImageSrc(url)} alt="Preview" className="h-full w-full object-cover rounded-lg" />
                             ) : (
                                 <div className="flex flex-col items-center gap-1.5 text-zinc-400 group-hover:text-amber-500 transition-colors">
                                     <Upload className="h-5 w-5" />
@@ -233,7 +234,7 @@ function ImageDialog({
                                     className="h-9 rounded-lg border-zinc-200 bg-zinc-50/50 focus:bg-white text-xs font-medium placeholder:text-zinc-300"
                                 />
                             </div>
-                            <p className="text-[9px] text-zinc-300 font-medium leading-tight">PNG, JPG, GIF, WebP — max 10MB</p>
+                            <p className="text-[9px] text-zinc-300 font-medium leading-tight">WebP, PNG, JPEG, GIF — max 10MB</p>
                         </div>
                     </div>
 

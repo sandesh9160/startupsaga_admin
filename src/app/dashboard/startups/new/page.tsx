@@ -13,6 +13,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RichTextEditor } from "@/components/dashboard/RichTextEditor";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
     ChevronLeft,
     Sparkles,
@@ -34,6 +42,8 @@ import {
     Image as ImageIcon,
     ExternalLink,
     Briefcase,
+    PenTool,
+    List
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -46,6 +56,7 @@ import {
     Hub
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { getSafeImageSrc } from "@/lib/images";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -157,7 +168,9 @@ export default function NewStartupPage() {
             setFormData(prev => ({
                 ...prev,
                 tagline: generatedTagline || prev.tagline,
-                description: generatedDesc || prev.description,
+                description: prev.description
+                    ? prev.description + `\n<p>${generatedDesc}</p>`
+                    : `<p>${generatedDesc}</p>`,
                 meta_title: seoResult.meta_title || `${formData.name} | Startup Directory`,
                 meta_description: seoResult.meta_description || generatedDesc || ""
             }));
@@ -215,6 +228,89 @@ export default function NewStartupPage() {
         }
     };
 
+    const sectionTemplates = [
+        { title: "The Problem", placeholder: "Describe the core problem this startup is solving..." },
+        { title: "The Solution", placeholder: "Explain how their product or service addresses this problem..." },
+        { title: "The Journey", placeholder: "Share the story of how the founders started and built the company..." },
+        { title: "Revenue Model", placeholder: "Describe how the startup monetizes..." },
+        { title: "Funding & Growth", placeholder: "Share key metrics, funding rounds, and growth milestones..." },
+        { title: "Future Plans", placeholder: "What's next for this startup..." }
+    ];
+
+    const headingRegex = /<(h[2-4])[^>]*>([\s\S]*?)<\/\1>/gi;
+    const tocContent = formData.description || '';
+    const tocMatches = [...tocContent.matchAll(headingRegex)];
+    const tocItems = tocMatches.map((match, idx) => {
+        const tag = match[1];
+        const rawInner = match[2];
+        const plainTitle = rawInner.replace(/<[^>]*>/g, '').trim();
+        const fullMatch = match[0];
+        const startIndex = match.index || 0;
+        return {
+            id: idx + 1,
+            title: plainTitle || `[Untitled ${tag.toUpperCase()}]`,
+            fullMatch,
+            rawInner,
+            tag,
+            startIndex
+        };
+    });
+
+    const handleRenameHeading = (startIndex: number, fullMatch: string, oldTitle: string, newTitle: string) => {
+        if (!newTitle.trim() || newTitle === oldTitle) return;
+
+        const currentContent = formData.description;
+        if (currentContent.substring(startIndex, startIndex + fullMatch.length) !== fullMatch) {
+            toast.error("Content synchronized, please try again");
+            return;
+        }
+
+        const newFullMatch = fullMatch.replace(oldTitle, newTitle);
+        const updatedContent =
+            currentContent.slice(0, startIndex) +
+            newFullMatch +
+            currentContent.slice(startIndex + fullMatch.length);
+
+        setFormData(prev => ({ ...prev, description: updatedContent }));
+    };
+
+    const handleDeleteHeading = (startIndex: number, fullMatch: string) => {
+        const currentContent = formData.description;
+        if (currentContent.substring(startIndex, startIndex + fullMatch.length) !== fullMatch) {
+            toast.error("Content synchronized, please try again");
+            return;
+        }
+
+        const endOfH2 = startIndex + fullMatch.length;
+        const remainingAfter = currentContent.slice(endOfH2);
+
+        const nextHeadingMatch = remainingAfter.match(/<(h[2-4])[^>]*>/i);
+        const endOfSection = nextHeadingMatch
+            ? endOfH2 + remainingAfter.indexOf(nextHeadingMatch[0])
+            : currentContent.length;
+
+        const updatedContent = currentContent.slice(0, startIndex) + currentContent.slice(endOfSection);
+        setFormData(prev => ({ ...prev, description: updatedContent.trim() }));
+        toast.success("Section removed");
+    };
+
+    const handleAddStandardSection = (template: { title: string; placeholder: string }) => {
+        const sectionHtml = `\n<h2 id="${template.title.toLowerCase().replace(/\s+/g, '-')}">${template.title}</h2>\n<p>${template.placeholder}</p>\n`;
+        setFormData(prev => ({
+            ...prev,
+            description: prev.description + sectionHtml
+        }));
+        toast.success(`Section "${template.title}" added`);
+    };
+
+    const handleAddEmptySection = () => {
+        const sectionHtml = `\n<h2>New Section</h2>\n<p>Start writing here...</p>\n`;
+        setFormData(prev => ({
+            ...prev,
+            description: prev.description + sectionHtml
+        }));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -239,320 +335,349 @@ export default function NewStartupPage() {
     return (
         <div className="admin-page space-y-6 pb-12">
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 rounded-xl bg-secondary/50 hover:bg-secondary border border-border/40 transition-all active:scale-95"
-                    asChild
-                >
-                    <Link href="/dashboard/startups">
-                        <ChevronLeft className="h-5 w-5" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-zinc-50 border border-zinc-100 shadow-sm">
+                <div className="flex items-center gap-4">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl bg-white border border-zinc-200 shadow-sm hover:bg-zinc-50 transition-all active:scale-95"
+                        asChild
+                    >
+                        <Link href="/dashboard/startups">
+                            <ChevronLeft className="h-5 w-5" />
+                        </Link>
+                    </Button>
+                    <div className="h-11 w-11 rounded-xl bg-purple-600 flex items-center justify-center shadow-md shadow-purple-200">
+                        <Building2 className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Master Data</p>
+                        <h1 className="text-xl font-bold tracking-tight text-zinc-900">New Startup</h1>
+                        <p className="text-[10px] font-medium text-zinc-400 uppercase tracking-widest leading-none mt-1">
+                            Expand the ecosystem with a new venture
+                        </p>
+                    </div>
+                </div>
+
+                {/* Format Toggle */}
+                <div className="hidden lg:flex p-1 bg-zinc-200/50 rounded-lg shrink-0 items-center">
+                    <Link href="/dashboard/stories/new" className="px-5 py-1.5 text-xs font-bold rounded-md text-zinc-500 hover:text-zinc-700 transition-all flex items-center gap-2">
+                        <PenTool className="h-3 w-3" /> Blog Post
                     </Link>
-                </Button>
-                <div>
-                    <h1 className="text-xl font-black uppercase tracking-tight text-foreground flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-primary" />
-                        New Startup
-                    </h1>
-                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-                        Expand the ecosystem with a new venture
-                    </p>
+                    <div className="px-5 py-1.5 text-xs font-bold rounded-md bg-white text-zinc-900 shadow-sm flex items-center gap-2">
+                        <Building2 className="h-3 w-3 text-purple-600" /> Startup Journey
+                    </div>
                 </div>
             </div>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Left Column — Primary Data */}
                 <div className="lg:col-span-8 space-y-6">
-                    {/* Basic Identity Card */}
+                    {/* Consolidated Startup Profile */}
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="admin-surface-compact overflow-hidden border border-border/40 shadow-sm"
                     >
-                        <div className="p-4 border-b border-border/40 bg-secondary/10 flex items-center justify-between">
+                        <div className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Building2 className="h-4 w-4 text-primary" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Company Identity</span>
+                                <div className="h-6 w-6 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                    <Building2 className="h-3.5 w-3.5 text-purple-600" />
+                                </div>
+                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
+                                    Startup Profile
+                                </span>
                             </div>
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="h-8 gap-2 px-3 rounded-lg border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-[10px] font-bold uppercase tracking-wider"
+                                className="h-7 gap-1.5 px-3 rounded-lg border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 transition-all text-[9px] font-bold uppercase tracking-wider"
                                 onClick={handleGenerateContent}
                                 disabled={isGenerating || !formData.name}
                             >
-                                {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                                AI Assistance
+                                {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                AI Assist
                             </Button>
                         </div>
-                        <div className="p-6 space-y-5">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Startup Name</Label>
-                                    <Input
-                                        placeholder="e.g. Acme Fintech"
-                                        value={formData.name}
-                                        onChange={(e) => {
-                                            const newName = e.target.value;
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                name: newName,
-                                                slug: prev.slug || newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-                                            }));
-                                        }}
-                                        className="h-10 px-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 transition-all font-semibold"
-                                        required
-                                    />
+
+                        <div className="p-6 space-y-8">
+                            {/* Identity & Branding */}
+                            <div className="space-y-5">
+                                <div className="flex items-center gap-2 border-b border-zinc-100 pb-2">
+                                    <Globe className="h-3.5 w-3.5 text-zinc-400" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Identity & Branding</span>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between mb-0.5">
-                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">URL Slug</Label>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            className="h-4 p-0 text-[9px] font-bold text-primary hover:bg-transparent"
-                                            onClick={() => setFormData({ ...formData, slug: formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') })}
-                                        >
-                                            Generate
-                                        </Button>
-                                    </div>
-                                    <div className="relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">/startups/</div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Startup Name</Label>
                                         <Input
-                                            placeholder="acme-fintech"
-                                            value={formData.slug}
-                                            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                                            className="h-10 pl-16 pr-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 font-medium"
+                                            placeholder="e.g. Zomato"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            onBlur={() => !formData.slug && setFormData({ ...formData, slug: formData.name.toLowerCase().replace(/\s+/g, '-') })}
+                                            className="h-10 px-3 rounded-xl border-zinc-200"
                                             required
                                         />
                                     </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Slug</Label>
+                                        <div className="relative">
+                                            <Input
+                                                placeholder="zomato"
+                                                value={formData.slug}
+                                                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                                                className="h-10 px-3 rounded-xl border-zinc-200"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="absolute right-1 top-1 h-8 text-[9px] font-bold uppercase tracking-wider text-purple-600 hover:bg-purple-50"
+                                                onClick={() => setFormData({ ...formData, slug: formData.name.toLowerCase().replace(/\s+/g, '-') })}
+                                            >
+                                                Auto
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Website URL</Label>
-                                    <div className="relative">
-                                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Website URL</Label>
+                                        <div className="relative">
+                                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                            <Input
+                                                placeholder="https://example.com"
+                                                value={formData.website_url}
+                                                onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
+                                                className="h-10 pl-9 pr-3 rounded-xl border-zinc-200 bg-white"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Tagline</Label>
                                         <Input
-                                            placeholder="https://example.com"
-                                            value={formData.website_url}
-                                            onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
-                                            className="h-10 pl-9 pr-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10"
+                                            placeholder="e.g. 10-minute grocery delivery"
+                                            value={formData.tagline}
+                                            onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
+                                            className="h-10 px-3 rounded-xl border-zinc-200"
                                         />
                                     </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Tagline</Label>
-                                    <Input
-                                        placeholder="e.g. 10-minute grocery delivery"
-                                        value={formData.tagline}
-                                        onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
-                                        className="h-10 px-3 rounded-xl border-zinc-200"
-                                    />
+
+                                {/* Logo & OG Image */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-3">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Startup Logo</Label>
+                                        <div className="flex gap-4 items-start">
+                                            <div className="relative h-20 w-20 rounded-2xl bg-white border border-zinc-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-zinc-50 transition-all shadow-sm group shrink-0">
+                                                {formData.logo ? (
+                                                    <img src={getSafeImageSrc(formData.logo)} alt="" className="h-full w-full object-contain p-2" />
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-1 opacity-30 group-hover:opacity-100">
+                                                        <Upload className="h-5 w-5" />
+                                                        <span className="text-[8px] font-black uppercase">Upload</span>
+                                                    </div>
+                                                )}
+                                                <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleImageUpload(e, "logo")} />
+                                            </div>
+                                            <div className="flex-1 space-y-2">
+                                                <Input
+                                                    placeholder="Logo URL (supports WebP, PNG, JPG)"
+                                                    value={formData.logo || ""}
+                                                    onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
+                                                    className="h-10 rounded-xl bg-white border-zinc-200 text-xs"
+                                                />
+                                                <p className="text-[9px] text-zinc-400 font-medium ml-1 italic">Paste URL or click square to upload</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Social Preview (OG Image)</Label>
+                                        <div className="flex gap-4 items-start">
+                                            <div className="relative h-20 w-32 rounded-2xl bg-white border border-zinc-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-zinc-50 transition-all shadow-sm group shrink-0">
+                                                {formData.og_image ? (
+                                                    <img src={getSafeImageSrc(formData.og_image)} alt="" className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-1 opacity-30 group-hover:opacity-100">
+                                                        <ImageIcon className="h-5 w-5" />
+                                                        <span className="text-[8px] font-black uppercase tracking-widest">Upload social</span>
+                                                    </div>
+                                                )}
+                                                <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleImageUpload(e, "og_image")} />
+                                            </div>
+                                            <div className="flex-1 space-y-2">
+                                                <Input
+                                                    placeholder="OG Image URL (WebP/JPEG)"
+                                                    value={formData.og_image || ""}
+                                                    onChange={(e) => setFormData({ ...formData, og_image: e.target.value })}
+                                                    className="h-10 rounded-xl bg-white border-zinc-200 text-xs"
+                                                />
+                                                <p className="text-[9px] text-zinc-400 font-medium ml-1 italic">Social card (1200x630)</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Category & City */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
+                                        <Select
+                                            value={formData.category}
+                                            onValueChange={(v) => setFormData({ ...formData, category: v })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs">
+                                                <SelectValue placeholder="Select Category" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {categories.map((cat) => (
+                                                    <SelectItem key={cat.id || cat.slug} value={cat.id?.toString() || ""}>
+                                                        {cat.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Location Hub</Label>
+                                        <Select
+                                            value={formData.city}
+                                            onValueChange={(v) => setFormData({ ...formData, city: v })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs">
+                                                <SelectValue placeholder="Select Hub" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {hubs.map((hub) => (
+                                                    <SelectItem key={hub.id || hub.slug} value={hub.id?.toString() || ""}>
+                                                        {hub.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Description / Value Prop</Label>
-                                <Textarea
-                                    placeholder="Tell the world what they do..."
-                                    className="min-h-[100px] px-3 py-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 resize-none leading-relaxed transition-all"
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    required
-                                />
-                            </div>
+                            {/* Business & Growth */}
+                            <div className="space-y-5 pt-4">
+                                <div className="flex items-center gap-2 border-b border-zinc-100 pb-2">
+                                    <LayoutGrid className="h-3.5 w-3.5 text-zinc-400" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Business & Growth</span>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Founded Year</Label>
+                                        <Input
+                                            type="number"
+                                            placeholder="2024"
+                                            value={formData.founded_year}
+                                            onChange={(e) => setFormData({ ...formData, founded_year: e.target.value })}
+                                            className="h-10 px-3 rounded-xl border-zinc-200"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Funding Stage</Label>
+                                        <Select
+                                            value={formData.stage}
+                                            onValueChange={(v) => setFormData({ ...formData, stage: v })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {STAGES.map(s => (
+                                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Business Model</Label>
+                                        <Select
+                                            value={formData.business_model}
+                                            onValueChange={(v) => setFormData({ ...formData, business_model: v })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {BUSINESS_MODELS.map(m => (
+                                                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Team Size</Label>
+                                        <Select
+                                            value={formData.team_size}
+                                            onValueChange={(v) => setFormData({ ...formData, team_size: v })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {TEAM_SIZES.map(s => (
+                                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
 
-                            {/* Logo & OG Image */}
-                            <div className="grid grid-cols-2 gap-5">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Logo</Label>
-                                    <div className="relative h-16 w-16 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-zinc-100 transition-colors">
-                                        {formData.logo ? (
-                                            <img src={formData.logo} alt="" className="h-full w-full object-contain" />
-                                        ) : (
-                                            <Upload className="h-5 w-5 text-zinc-400" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Sector / Industry</Label>
+                                        <Select
+                                            value={formData.sector}
+                                            onValueChange={(v) => setFormData({ ...formData, sector: v })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
+                                                <SelectValue placeholder="Select Sector" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {SECTORS.map(s => (
+                                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Industry Tags */}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Industry Tags</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                placeholder="Add a tag and press Enter"
+                                                value={tagInput}
+                                                onChange={(e) => setTagInput(e.target.value)}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                                                className="h-10 px-3 rounded-xl border-zinc-200 flex-1"
+                                            />
+                                            <Button type="button" variant="outline" size="sm" className="h-10 w-10 rounded-xl text-xs flex items-center justify-center p-0" onClick={addTag}>
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        {formData.industry_tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                {formData.industry_tags.map((tag) => (
+                                                    <span
+                                                        key={tag}
+                                                        className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border border-purple-100 cursor-pointer hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all"
+                                                        onClick={() => removeTag(tag)}
+                                                    >
+                                                        {tag}
+                                                        <Trash2 className="h-2.5 w-2.5" />
+                                                    </span>
+                                                ))}
+                                            </div>
                                         )}
-                                        <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleImageUpload(e, "logo")} />
                                     </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">OG Image</Label>
-                                    <div className="relative h-16 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-zinc-100 transition-colors">
-                                        {formData.og_image ? (
-                                            <img src={formData.og_image} alt="" className="h-full w-full object-cover" />
-                                        ) : (
-                                            <ImageIcon className="h-5 w-5 text-zinc-400" />
-                                        )}
-                                        <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleImageUpload(e, "og_image")} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Category & City */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
-                                    <Select
-                                        value={formData.category}
-                                        onValueChange={(v) => setFormData({ ...formData, category: v })}
-                                    >
-                                        <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white">
-                                            <SelectValue placeholder="Select Category" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {categories.map((cat) => (
-                                                <SelectItem key={cat.id || cat.slug} value={cat.id?.toString() || ""}>
-                                                    {cat.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Location Hub</Label>
-                                    <Select
-                                        value={formData.city}
-                                        onValueChange={(v) => setFormData({ ...formData, city: v })}
-                                    >
-                                        <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white">
-                                            <SelectValue placeholder="Select Hub" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {hubs.map((hub) => (
-                                                <SelectItem key={hub.id || hub.slug} value={hub.id?.toString() || ""}>
-                                                    {hub.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Business Stats Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="admin-surface-compact overflow-hidden border border-border/40 shadow-sm"
-                    >
-                        <div className="p-4 border-b border-border/40 bg-secondary/10 flex items-center gap-2">
-                            <LayoutGrid className="h-4 w-4 text-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Business Stats</span>
-                        </div>
-                        <div className="p-6 space-y-5">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Founded Year</Label>
-                                    <Input
-                                        type="number"
-                                        placeholder="2024"
-                                        value={formData.founded_year}
-                                        onChange={(e) => setFormData({ ...formData, founded_year: e.target.value })}
-                                        className="h-10 px-3 rounded-xl border-zinc-200"
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Funding Stage</Label>
-                                    <Select
-                                        value={formData.stage}
-                                        onValueChange={(v) => setFormData({ ...formData, stage: v })}
-                                    >
-                                        <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {STAGES.map(s => (
-                                                <SelectItem key={s} value={s}>{s}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Business Model</Label>
-                                    <Select
-                                        value={formData.business_model}
-                                        onValueChange={(v) => setFormData({ ...formData, business_model: v })}
-                                    >
-                                        <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {BUSINESS_MODELS.map(m => (
-                                                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Team Size</Label>
-                                    <Select
-                                        value={formData.team_size}
-                                        onValueChange={(v) => setFormData({ ...formData, team_size: v })}
-                                    >
-                                        <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {TEAM_SIZES.map(s => (
-                                                <SelectItem key={s} value={s}>{s}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Sector / Industry</Label>
-                                <Select
-                                    value={formData.sector}
-                                    onValueChange={(v) => setFormData({ ...formData, sector: v })}
-                                >
-                                    <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
-                                        <SelectValue placeholder="Select Sector" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {SECTORS.map(s => (
-                                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Industry Tags */}
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Industry Tags</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="Add a tag and press Enter"
-                                        value={tagInput}
-                                        onChange={(e) => setTagInput(e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
-                                        className="h-9 px-3 rounded-xl border-zinc-200 flex-1"
-                                    />
-                                    <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs" onClick={addTag}>
-                                        <Plus className="h-3 w-3" />
-                                    </Button>
-                                </div>
-                                {formData.industry_tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5 mt-2">
-                                        {formData.industry_tags.map((tag) => (
-                                            <span
-                                                key={tag}
-                                                className="inline-flex items-center gap-1 bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border border-primary/10 cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 transition-colors"
-                                                onClick={() => removeTag(tag)}
-                                            >
-                                                {tag}
-                                                <Trash2 className="h-2.5 w-2.5" />
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </motion.div>
@@ -561,49 +686,53 @@ export default function NewStartupPage() {
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15 }}
+                        transition={{ delay: 0.1 }}
                         className="admin-surface-compact overflow-hidden border border-border/40 shadow-sm"
                     >
-                        <div className="p-4 border-b border-border/40 bg-secondary/10 flex items-center justify-between">
+                        <div className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-primary" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Founders</span>
+                                <div className="h-6 w-6 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                    <User className="h-3.5 w-3.5 text-purple-600" />
+                                </div>
+                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
+                                    Founders & Leadership
+                                </span>
                             </div>
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="h-7 text-[9px] font-black uppercase tracking-wider rounded-lg gap-1.5"
+                                className="h-7 text-[9px] font-black uppercase tracking-wider rounded-lg gap-1.5 border-zinc-200"
                                 onClick={addFounder}
                             >
                                 <Plus className="h-3 w-3" />
-                                Add Founder
+                                Add Member
                             </Button>
                         </div>
-                        <div className="p-6 space-y-5">
-                            {/* Legacy founder fields */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-6 space-y-6">
+                            {/* Primary founder field */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Primary Founder Name</Label>
-                                    <div className="relative">
-                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-purple-600/70 ml-1">Primary Founder</Label>
+                                    <div className="relative group/input">
+                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400 group-focus-within/input:text-purple-600 transition-colors" />
                                         <Input
                                             placeholder="e.g. Deepinder Goyal"
                                             value={formData.founder_name}
                                             onChange={(e) => setFormData({ ...formData, founder_name: e.target.value })}
-                                            className="h-9 pl-9 pr-3 rounded-xl border-zinc-200"
+                                            className="h-10 pl-9 pr-3 rounded-xl border-zinc-200 focus-visible:ring-purple-500/20"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Founder LinkedIn</Label>
-                                    <div className="relative">
-                                        <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-purple-600/70 ml-1">LinkedIn Profile</Label>
+                                    <div className="relative group/input">
+                                        <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400 group-focus-within/input:text-purple-600 transition-colors" />
                                         <Input
                                             placeholder="https://linkedin.com/in/..."
                                             value={formData.founder_linkedin}
                                             onChange={(e) => setFormData({ ...formData, founder_linkedin: e.target.value })}
-                                            className="h-9 pl-9 pr-3 rounded-xl border-zinc-200"
+                                            className="h-10 pl-9 pr-3 rounded-xl border-zinc-200 focus-visible:ring-purple-500/20"
                                         />
                                     </div>
                                 </div>
@@ -617,167 +746,264 @@ export default function NewStartupPage() {
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
                                         exit={{ opacity: 0, height: 0 }}
-                                        className="p-4 rounded-2xl border border-zinc-100 bg-secondary/5 space-y-3 relative group"
+                                        className="p-4 rounded-2xl border border-zinc-100 bg-zinc-50/50 space-y-3 relative group/founder"
                                     >
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="icon"
-                                            className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
+                                            className="absolute top-2 right-2 h-7 w-7 text-zinc-300 hover:text-rose-500 opacity-0 group-hover/founder:opacity-100 transition-all"
                                             onClick={() => removeFounder(idx)}
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            <div className="space-y-1">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
                                                 <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Full Name</Label>
                                                 <Input
                                                     value={founder.name}
                                                     onChange={(e) => updateFounder(idx, 'name', e.target.value)}
                                                     placeholder="John Doe"
-                                                    className="h-9 px-3 rounded-xl border-zinc-200"
+                                                    className="h-9 px-3 rounded-xl border-zinc-200 bg-white"
                                                 />
                                             </div>
-                                            <div className="space-y-1">
+                                            <div className="space-y-1.5">
                                                 <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Role</Label>
                                                 <Input
                                                     value={founder.role}
                                                     onChange={(e) => updateFounder(idx, 'role', e.target.value)}
                                                     placeholder="Co-founder & CEO"
-                                                    className="h-9 px-3 rounded-xl border-zinc-200"
+                                                    className="h-9 px-3 rounded-xl border-zinc-200 bg-white"
                                                 />
                                             </div>
                                         </div>
-                                        <div className="space-y-1">
+                                        <div className="space-y-1.5">
                                             <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">LinkedIn URL</Label>
                                             <Input
                                                 value={founder.linkedin}
                                                 onChange={(e) => updateFounder(idx, 'linkedin', e.target.value)}
                                                 placeholder="https://linkedin.com/in/..."
-                                                className="h-9 px-3 rounded-xl border-zinc-200"
+                                                className="h-9 px-3 rounded-xl border-zinc-200 bg-white"
                                             />
                                         </div>
                                     </motion.div>
                                 ))}
                             </AnimatePresence>
-                            {formData.founders_data.length === 0 && (
-                                <div className="text-center py-6 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
-                                    <p className="text-xs font-bold text-zinc-400 mb-3 tracking-wide uppercase">No additional founders added</p>
-                                    <Button type="button" variant="outline" size="sm" onClick={addFounder} className="h-8 text-[10px] font-black uppercase tracking-widest rounded-xl">
-                                        Click to add
-                                    </Button>
-                                </div>
-                            )}
+                        </div>
+                    </motion.div>
+
+                    {/* Journey Details Editor */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className="admin-surface-compact overflow-hidden border border-border/40 shadow-sm"
+                    >
+                        <div className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                <PenTool className="h-3.5 w-3.5 text-purple-600" />
+                            </div>
+                            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">Journey Details</span>
+                        </div>
+                        <div className="p-0">
+                            <RichTextEditor
+                                content={formData.description}
+                                onChange={(content) => setFormData({ ...formData, description: content })}
+                                placeholder="Share the startup's journey..."
+                            />
                         </div>
                     </motion.div>
                 </div>
 
                 {/* Right Column — Status & SEO */}
                 <div className="lg:col-span-4 space-y-6">
-                    {/* Publication Settings */}
-                    <motion.div
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="admin-surface-compact overflow-hidden border border-border/40 shadow-sm"
-                    >
-                        <div className="p-4 border-b border-border/40 bg-secondary/10 flex items-center gap-2">
-                            <Globe className="h-4 w-4 text-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Visibility Settings</span>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Status</Label>
-                                <Select
-                                    value={formData.status}
-                                    onValueChange={(v) => setFormData({ ...formData, status: v })}
-                                >
-                                    <SelectTrigger className="h-10 rounded-xl border-zinc-200">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="published">Published</SelectItem>
-                                        <SelectItem value="draft">Draft</SelectItem>
-                                        <SelectItem value="pending">Pending</SelectItem>
-                                        <SelectItem value="blocked">Blocked</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-secondary/5">
-                                <div className="space-y-0.5">
-                                    <p className="text-[10px] font-black uppercase tracking-widest">Featured Status</p>
-                                    <p className="text-[9px] font-medium text-muted-foreground">Highlight in directory</p>
+                    {/* Dynamic Editable Table of Contents - Sidebar */}
+                    <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white group/toc relative">
+                        <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                    <List className="h-3 w-3 text-purple-600" />
                                 </div>
-                                <Button
-                                    type="button"
-                                    variant={formData.is_featured ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setFormData({ ...formData, is_featured: !formData.is_featured })}
-                                    className={cn(
-                                        "h-8 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all",
-                                        formData.is_featured ? "bg-amber-500 hover:bg-amber-600 text-white" : "text-muted-foreground"
-                                    )}
-                                >
-                                    {formData.is_featured ? <Check className="h-3 w-3 mr-1" /> : null}
-                                    {formData.is_featured ? "Featured" : "Regular"}
-                                </Button>
+                                <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
+                                    Content Outline
+                                </CardTitle>
                             </div>
-                        </div>
-                    </motion.div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-zinc-100">
+                                        <Plus className="h-3.5 w-3.5 text-purple-600" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
+                                    <div className="px-2 py-1.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-50 mb-1">
+                                        Insert Structure
+                                    </div>
+                                    {sectionTemplates.map((template) => (
+                                        <DropdownMenuItem
+                                            key={template.title}
+                                            onClick={() => handleAddStandardSection(template)}
+                                            className="rounded-lg py-2 cursor-pointer focus:bg-purple-50 focus:text-purple-700"
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold">{template.title}</span>
+                                            </div>
+                                        </DropdownMenuItem>
+                                    ))}
+                                    <div className="h-px bg-zinc-100 my-1" />
+                                    <DropdownMenuItem
+                                        onClick={handleAddEmptySection}
+                                        className="rounded-lg py-2 cursor-pointer font-bold text-xs"
+                                    >
+                                        <Plus className="h-3 w-3 mr-2" /> Custom Section
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </CardHeader>
+                        <CardContent className="p-5">
+                            {tocItems.length > 0 ? (
+                                <ol className="space-y-1.5">
+                                    {tocItems.map((item) => (
+                                        <li key={`${item.startIndex}-${item.id}`} className="flex items-center gap-2 group/item">
+                                            <span className={cn(
+                                                "text-[9px] font-black leading-none min-w-[20px] shrink-0",
+                                                item.tag === 'h2' ? "text-purple-500/50" : "text-zinc-300 ml-1.5"
+                                            )}>
+                                                {item.tag === 'h2' ? `${item.id}.` : `•`}
+                                            </span>
+                                            <Input
+                                                defaultValue={item.title}
+                                                onBlur={(e) => handleRenameHeading(item.startIndex, item.fullMatch, item.title, e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        (e.target as HTMLInputElement).blur();
+                                                    }
+                                                }}
+                                                className={cn(
+                                                    "h-8 border-transparent bg-transparent hover:bg-zinc-50 focus:bg-white focus:border-zinc-200 rounded-lg px-2 transition-all flex-1",
+                                                    item.tag === 'h2' ? "text-xs font-bold text-zinc-700" : "text-[11px] font-medium text-zinc-500"
+                                                )}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteHeading(item.startIndex, item.fullMatch)}
+                                                className="opacity-0 group-hover/item:opacity-100 h-6 w-6 flex items-center justify-center rounded-md text-zinc-400 hover:text-rose-500 hover:bg-rose-50 transition-all shrink-0"
+                                                title="Remove this section"
+                                            >
+                                                <Trash2 className="h-3 w-3" />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ol>
+                            ) : (
+                                <div className="py-6 text-center border-2 border-dashed border-zinc-100 rounded-2xl bg-zinc-50/50">
+                                    <div className="h-8 w-8 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-2">
+                                        <Plus className="h-4 w-4 text-purple-500" />
+                                    </div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Outline Empty</p>
+                                    <p className="text-[11px] text-zinc-500 mt-1">Add headers to format startup journey.</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
-                    {/* SEO Preview Card */}
-                    <motion.div
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.25 }}
-                        className="admin-surface-compact overflow-hidden border border-border/40 shadow-sm"
-                    >
-                        <div className="p-4 border-b border-border/40 bg-secondary/10 flex items-center gap-2">
-                            <Eye className="h-4 w-4 text-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Search Engine Optimization</span>
-                        </div>
-                        <div className="p-6 space-y-4 text-[11px]">
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">SEO Title</Label>
-                                <Input
-                                    value={formData.meta_title}
-                                    onChange={(e) => setFormData({ ...formData, meta_title: e.target.value })}
-                                    placeholder="Search engine title..."
-                                    className="h-9 px-3 rounded-lg border-zinc-200 bg-white"
-                                />
+                    {/* Unified Configuration Card */}
+                    <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                        <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50">
+                            <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                    <Globe className="h-3.5 w-3.5 text-purple-600" />
+                                </div>
+                                <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
+                                    Final Configuration
+                                </CardTitle>
                             </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">SEO Description</Label>
-                                <Textarea
-                                    value={formData.meta_description}
-                                    onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
-                                    placeholder="Search engine snippet..."
-                                    className="min-h-[72px] px-3 py-2 rounded-lg border-zinc-200 bg-white resize-none"
-                                />
+                        </CardHeader>
+                        <CardContent className="p-0 divide-y divide-zinc-100">
+                            {/* Visibility Section */}
+                            <div className="p-6 space-y-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Eye className="h-3.5 w-3.5 text-zinc-400" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Visibility & Status</span>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Status</Label>
+                                    <Select
+                                        value={formData.status}
+                                        onValueChange={(v) => setFormData({ ...formData, status: v })}
+                                    >
+                                        <SelectTrigger className="h-10 rounded-xl border-zinc-200">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="published">Published</SelectItem>
+                                            <SelectItem value="draft">Draft</SelectItem>
+                                            <SelectItem value="pending">Pending</SelectItem>
+                                            <SelectItem value="blocked">Blocked</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center justify-between p-3 rounded-xl border border-zinc-100 bg-zinc-50/50">
+                                    <div className="space-y-0.5">
+                                        <p className="text-[10px] font-black uppercase tracking-widest">Featured Status</p>
+                                        <p className="text-[9px] font-medium text-muted-foreground">Highlight in directory</p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant={formData.is_featured ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setFormData({ ...formData, is_featured: !formData.is_featured })}
+                                        className={cn(
+                                            "h-8 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all",
+                                            formData.is_featured ? "bg-amber-500 hover:bg-amber-600 text-white" : "text-muted-foreground border-zinc-200"
+                                        )}
+                                    >
+                                        {formData.is_featured ? <Check className="h-3 w-3 mr-1" /> : null}
+                                        {formData.is_featured ? "Featured" : "Regular"}
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Meta Keywords</Label>
-                                <Input
-                                    value={formData.meta_keywords}
-                                    onChange={(e) => setFormData({ ...formData, meta_keywords: e.target.value })}
-                                    placeholder="startup, fintech, india..."
-                                    className="h-9 px-3 rounded-lg border-zinc-200 bg-white"
-                                />
+
+                            {/* SEO Section */}
+                            <div className="p-6 space-y-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Sparkles className="h-3.5 w-3.5 text-zinc-400" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">SEO Meta Data</span>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">SEO Title</Label>
+                                        <Input
+                                            value={formData.meta_title}
+                                            onChange={(e) => setFormData({ ...formData, meta_title: e.target.value })}
+                                            placeholder="Search engine title..."
+                                            className="h-9 px-3 rounded-xl border-zinc-200 bg-white"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Meta Description</Label>
+                                        <Textarea
+                                            value={formData.meta_description}
+                                            onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
+                                            placeholder="Brief summary for search results..."
+                                            className="min-h-[80px] px-3 py-2 rounded-xl border-zinc-200 bg-white resize-none text-xs"
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </motion.div>
+                        </CardContent>
+                    </Card>
 
                     {/* Actions Card */}
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="admin-surface-compact p-6 border border-primary/20 bg-primary/5 shadow-lg shadow-primary/5"
+                        className="admin-surface-compact p-6 border border-purple-200 bg-purple-50 shadow-lg shadow-purple-500/5"
                     >
                         <div className="space-y-3">
                             <Button
                                 type="submit"
-                                className="w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                                className="w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] bg-purple-600 hover:bg-purple-700 text-white shadow-xl shadow-purple-200 transition-all hover:scale-[1.02] active:scale-95"
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
@@ -792,7 +1018,7 @@ export default function NewStartupPage() {
                             <Button
                                 type="button"
                                 variant="ghost"
-                                className="w-full h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all"
+                                className="w-full h-10 rounded-xl text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-all"
                                 onClick={() => router.push("/dashboard/startups")}
                             >
                                 Discard Entries

@@ -72,6 +72,7 @@ type StoryFormData = {
     isFeatured: boolean;
     related_startup_slug?: string;
     image_alt?: string;
+    og_image?: string;
     show_table_of_contents: boolean;
     status: StoryStatus;
 };
@@ -110,6 +111,7 @@ function NewStoryPageContent() {
         isFeatured: false,
         related_startup_slug: "",
         image_alt: "",
+        og_image: "",
         show_table_of_contents: true,
         status: "draft"
     });
@@ -289,6 +291,7 @@ function NewStoryPageContent() {
                         isFeatured: story.isFeatured || false,
                         related_startup_slug: story.related_startup?.slug || "",
                         image_alt: story.image_alt || "",
+                        og_image: story.og_image || "",
                         show_table_of_contents: story.show_table_of_contents ?? true,
                         status
                     });
@@ -330,6 +333,7 @@ function NewStoryPageContent() {
                         author: prev.author || sub.founder_name || "Editorial Team",
                         meta_title: titleFromSubmission ? `How ${titleFromSubmission} is Revolutionizing ${sub.category || 'their Industry'}` : "",
                         thumbnail: sub.thumbnail || sub.logo || sub.logo_url || prev.thumbnail || "",
+                        og_image: sub.og_image || "",
                         related_startup_slug: sub.startup_name ? sub.startup_name.toLowerCase().replace(/\s+/g, '-') : ""
                     }));
                     // store submission details for UI (if needed later)
@@ -655,6 +659,16 @@ function NewStoryPageContent() {
                         </div>
                     </div>
 
+                    {/* Format Toggle */}
+                    <div className="hidden lg:flex p-1 bg-zinc-200/50 rounded-lg shrink-0 items-center">
+                        <div className="px-5 py-1.5 text-xs font-bold rounded-md bg-white text-zinc-900 shadow-sm flex items-center gap-2">
+                            <PenTool className="h-3 w-3" /> Blog Post
+                        </div>
+                        <Link href={submissionId ? `/dashboard/startups/new?submission=${submissionId}` : `/dashboard/startups/new`} className="px-5 py-1.5 text-xs font-bold rounded-md text-zinc-500 hover:text-zinc-700 transition-all flex items-center gap-2">
+                            <Building2 className="h-3 w-3" /> Startup Journey
+                        </Link>
+                    </div>
+
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => router.push("/dashboard/stories")}
@@ -736,7 +750,7 @@ function NewStoryPageContent() {
                                     </div>
                                     <Input
                                         placeholder="e.g., Zepto Raises $665M, Becomes India's Fastest Growing Unicorn"
-                                        value={formData.title}
+                                        value={formData.title || ""}
                                         onChange={(e) => {
                                             const newTitle = e.target.value;
                                             setFormData(prev => ({
@@ -756,7 +770,7 @@ function NewStoryPageContent() {
                                     </Label>
                                     <Textarea
                                         placeholder="Brief summary that appears at the top of the story..."
-                                        value={formData.excerpt}
+                                        value={formData.excerpt || ""}
                                         onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                                         className="min-h-[100px] text-sm rounded-xl bg-secondary border-border focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all resize-none"
                                     />
@@ -869,51 +883,14 @@ function NewStoryPageContent() {
                                         </Label>
                                         <Input
                                             placeholder="e.g., Priya Sharma, Rahul Verma"
-                                            value={formData.author}
+                                            value={formData.author || ""}
                                             onChange={(e) => setFormData({ ...formData, author: e.target.value })}
                                             className="h-11 rounded-xl bg-secondary border-border text-xs font-bold transition-all focus:bg-white"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="space-y-2 pt-4 border-t border-zinc-100">
-                                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                                        <Building2 className="h-3.5 w-3.5 text-purple-500" />
-                                        Linked Startup
-                                    </Label>
-                                    <Select
-                                        value={formData.related_startup_slug || "none_selection"}
-                                        onValueChange={(value) => setFormData(prev => ({ ...prev, related_startup_slug: value === "none_selection" ? "" : value }))}
-                                    >
-                                        <SelectTrigger className="h-11 rounded-xl bg-zinc-50 border-transparent text-xs font-bold transition-all focus:bg-white focus:ring-1 focus:ring-zinc-200 text-left px-4">
-                                            <SelectValue placeholder="Select platform startup..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-xl border-zinc-100 shadow-xl p-1 max-h-[300px]">
-                                            <SelectItem value="none_selection" className="rounded-lg py-2 text-[10px] font-bold text-zinc-400">
-                                                None (standalone story)
-                                            </SelectItem>
-                                            {startups.map((s) => (
-                                                <SelectItem key={s.id} value={s.slug} className="rounded-lg py-2.5 focus:bg-zinc-50 transition-all">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-7 w-7 rounded-md bg-white border border-zinc-200 p-1 flex items-center justify-center overflow-hidden shrink-0">
-                                                            {s.logo ? (
-                                                                <img src={getSafeImageSrc(s.logo)} alt="" className="h-full w-full object-contain" />
-                                                            ) : (
-                                                                <div className="text-[8px] font-black text-zinc-300">NA</div>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <div className="text-[11px] font-bold text-zinc-800 leading-tight">{s.name}</div>
-                                                            <div className="text-[9px] text-zinc-400 font-medium truncate max-w-[150px]">
-                                                                {s.category} • {s.city}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+
                             </CardContent>
                         </Card>
 
@@ -950,8 +927,8 @@ function NewStoryPageContent() {
                         <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white group/toc relative">
                             <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="h-6 w-6 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                                        <List className="h-3 w-3 text-orange-600" />
+                                    <div className="h-6 w-6 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                        <List className="h-3 w-3 text-purple-600" />
                                     </div>
                                     <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
                                         Content Outline
@@ -960,7 +937,7 @@ function NewStoryPageContent() {
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-zinc-100">
-                                            <Plus className="h-3.5 w-3.5 text-orange-600" />
+                                            <Plus className="h-3.5 w-3.5 text-purple-600" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
@@ -971,7 +948,7 @@ function NewStoryPageContent() {
                                             <DropdownMenuItem
                                                 key={template.title}
                                                 onClick={() => handleAddStandardSection(template)}
-                                                className="rounded-lg py-2 cursor-pointer focus:bg-orange-50 focus:text-orange-700"
+                                                className="rounded-lg py-2 cursor-pointer focus:bg-purple-50 focus:text-purple-700"
                                             >
                                                 <div className="flex flex-col">
                                                     <span className="text-xs font-bold">{template.title}</span>
@@ -995,7 +972,7 @@ function NewStoryPageContent() {
                                             <li key={`${item.startIndex}-${item.id}`} className="flex items-center gap-2 group/item">
                                                 <span className={cn(
                                                     "text-[9px] font-black leading-none min-w-[20px] shrink-0",
-                                                    item.tag === 'h2' ? "text-orange-500/50" : "text-zinc-300 ml-1.5"
+                                                    item.tag === 'h2' ? "text-purple-500/50" : "text-zinc-300 ml-1.5"
                                                 )}>
                                                     {item.tag === 'h2' ? `${item.id}.` : `•`}
                                                 </span>
@@ -1026,7 +1003,7 @@ function NewStoryPageContent() {
                                 ) : (
                                     <div className="py-6 text-center border-2 border-dashed border-zinc-100 rounded-2xl bg-zinc-50/50">
                                         <div className="h-8 w-8 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-2">
-                                            <Plus className="h-4 w-4 text-orange-500" />
+                                            <Plus className="h-4 w-4 text-purple-500" />
                                         </div>
                                         <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">No sections yet</p>
                                         <p className="text-[9px] text-zinc-400 mt-1">
@@ -1117,7 +1094,7 @@ function NewStoryPageContent() {
                                     >
                                         {formData.thumbnail ? (
                                             <>
-                                                <img src={formData.thumbnail} alt="Cover" className="h-full w-full object-cover" />
+                                                <img src={getSafeImageSrc(formData.thumbnail)} alt="Cover" className="h-full w-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                     <span className="text-white text-xs font-bold bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">Change Image</span>
                                                 </div>
@@ -1141,7 +1118,7 @@ function NewStoryPageContent() {
                                         </div>
                                         <select
                                             className="w-full h-10 rounded-xl border border-zinc-100 bg-zinc-50 px-3 text-xs font-bold text-zinc-700 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500/10"
-                                            value={formData.thumbnail}
+                                            value={formData.thumbnail || ""}
                                             onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
                                         >
                                             <option value="">— Choose an asset —</option>
@@ -1170,10 +1147,55 @@ function NewStoryPageContent() {
                                             }}
                                         />
                                         <Input
-                                            placeholder="Or paste image URL..."
-                                            value={formData.thumbnail}
+                                            placeholder="Or paste cover URL (WebP, PNG, JPG)..."
+                                            value={formData.thumbnail || ""}
                                             onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
                                             className="h-10 rounded-xl bg-secondary border-border text-[11px] font-bold focus:bg-white"
+                                        />
+                                    </div>
+
+                                    {/* Social Preview / OG Image */}
+                                    <div className="space-y-4 pt-4 border-t border-zinc-100/50">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Social Card (OG Image)</Label>
+                                        <div
+                                            onClick={() => document.getElementById('og-upload')?.click()}
+                                            className="aspect-[1.91/1] w-full rounded-xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:bg-emerald-50/30 hover:border-emerald-300 transition-all"
+                                        >
+                                            {formData.og_image ? (
+                                                <>
+                                                    <img src={getSafeImageSrc(formData.og_image)} alt="OG Preview" className="h-full w-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <span className="text-white text-[9px] font-black uppercase tracking-widest bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/20">Change OG Image</span>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-2 opacity-30 group-hover:opacity-100 transition-all">
+                                                    <ImageIcon className="h-6 w-6 text-zinc-400" />
+                                                    <span className="text-[8px] font-black uppercase tracking-widest">Upload social image</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <input
+                                            id="og-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => {
+                                                        setFormData({ ...formData, og_image: reader.result as string });
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                        />
+                                        <Input
+                                            placeholder="OG Image URL (WebP/PNG)..."
+                                            value={formData.og_image || ""}
+                                            onChange={(e) => setFormData({ ...formData, og_image: e.target.value })}
+                                            className="h-10 rounded-xl bg-secondary border-border text-[10px] font-bold focus:bg-white"
                                         />
                                     </div>
                                 </div>
@@ -1274,7 +1296,7 @@ function NewStoryPageContent() {
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Meta Title</Label>
                                     <Input
-                                        value={formData.meta_title}
+                                        value={formData.meta_title || ""}
                                         onChange={(e) => setFormData({ ...formData, meta_title: e.target.value })}
                                         className="h-10 text-xs font-bold rounded-xl border-border bg-secondary focus:bg-white"
                                         placeholder="SEO-optimized title (max 60 chars)"
@@ -1289,7 +1311,7 @@ function NewStoryPageContent() {
                                     <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Meta Description</Label>
                                     <Textarea
                                         className="min-h-[90px] text-xs font-bold rounded-xl border-zinc-200 bg-zinc-50/50 focus:bg-white resize-none"
-                                        value={formData.meta_description}
+                                        value={formData.meta_description || ""}
                                         onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
                                         placeholder="SEO-optimized description (max 160 chars)"
                                     />
@@ -1302,7 +1324,7 @@ function NewStoryPageContent() {
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Meta Keywords</Label>
                                     <Input
-                                        value={formData.meta_keywords}
+                                        value={formData.meta_keywords || ""}
                                         onChange={(e) => setFormData({ ...formData, meta_keywords: e.target.value })}
                                         className="h-10 text-xs font-bold rounded-xl border-border bg-secondary focus:bg-white"
                                         placeholder="Keywords, separated, by, commas"
@@ -1311,7 +1333,7 @@ function NewStoryPageContent() {
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Image Alt Text</Label>
                                     <Input
-                                        value={formData.image_alt}
+                                        value={formData.image_alt || ""}
                                         onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
                                         className="h-10 text-xs font-bold rounded-xl border-border bg-secondary focus:bg-white"
                                         placeholder="Descriptive alt text for featured image"

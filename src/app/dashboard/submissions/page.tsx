@@ -517,22 +517,45 @@ export default function SubmissionsPage() {
                         </div>
                     </div>
 
-                    <div className="p-6 bg-zinc-50/50 border-t border-zinc-100 flex items-center justify-end gap-3">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setEditingSubmission(null)}
-                            className="rounded-xl px-6 h-10 font-medium text-xs"
-                        >
-                            Cancel
-                        </Button>
-                        <button
-                            onClick={handleSaveEdit}
-                            disabled={isSaving}
-                            className="h-10 px-6 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all active:scale-95 shadow-sm shadow-purple-200 flex items-center gap-2 disabled:opacity-50"
-                        >
-                            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                            {isSaving ? "Saving..." : "Save Changes"}
-                        </button>
+                    <div className="p-6 bg-zinc-50/50 border-t border-zinc-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex gap-2 w-full md:w-auto">
+                            {editingSubmission?.status === 'pending' && (
+                                <button
+                                    onClick={() => handleStatusUpdate(editingSubmission.id, 'approved')}
+                                    className="h-10 px-5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-100 font-bold text-xs uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
+                                    title="Display Startup"
+                                >
+                                    <CheckCircle2 size={16} />
+                                    Display Startup
+                                </button>
+                            )}
+                            <button
+                                onClick={() => router.push(`/dashboard/stories/new?submission=${editingSubmission?.id}`)}
+                                className="h-10 px-5 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-100 font-bold text-xs uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
+                                title="Write Story (Blog)"
+                            >
+                                <FilePlus size={16} />
+                                Write Story
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setEditingSubmission(null)}
+                                className="rounded-xl px-6 h-10 font-medium text-xs text-zinc-500"
+                            >
+                                Cancel
+                            </Button>
+                            <button
+                                onClick={handleSaveEdit}
+                                disabled={isSaving}
+                                className="h-10 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all active:scale-95 shadow-sm shadow-slate-200 flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                {isSaving ? "Saving..." : "Save Edits"}
+                            </button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

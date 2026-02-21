@@ -108,10 +108,17 @@ export default function StoriesPage() {
                             <BookOpen className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Content</p>
-                            <h1 className="text-xl font-bold tracking-tight text-zinc-900">Stories</h1>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Master Data</p>
+                            <h1 className="text-xl font-bold tracking-tight text-zinc-900">Blogs</h1>
                         </div>
                     </div>
+
+                    {/* Master Data Toggle */}
+                    <div className="hidden lg:flex p-1 bg-zinc-200/50 rounded-lg shrink-0">
+                        <Link href="/dashboard/startups" className="px-5 py-1.5 text-xs font-bold rounded-md text-zinc-500 hover:text-zinc-700 transition-all">Startups</Link>
+                        <div className="px-5 py-1.5 text-xs font-bold rounded-md bg-white text-zinc-900 shadow-sm">Blogs</div>
+                    </div>
+
                     <div className="flex items-center gap-3">
                         <div className="hidden sm:flex flex-col items-end mr-1">
                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total</span>

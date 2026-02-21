@@ -297,7 +297,7 @@ export default function StartupEditPage() {
                                             </div>
                                             <select
                                                 className="w-full h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-2 text-[11px] text-zinc-700 outline-none focus:bg-white transition-all"
-                                                value={formData.logo}
+                                                value={formData.logo || ""}
                                                 onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
                                             >
                                                 <option value="">Pick from Media Library</option>
@@ -338,7 +338,7 @@ export default function StartupEditPage() {
                                             </div>
                                             <select
                                                 className="w-full h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-2 text-[11px] text-zinc-700 outline-none focus:bg-white transition-all"
-                                                value={formData.thumbnail}
+                                                value={formData.thumbnail || ""}
                                                 onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
                                             >
                                                 <option value="">Pick from Media Library</option>

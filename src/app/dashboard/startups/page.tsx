@@ -98,14 +98,21 @@ export default function StartupsPage() {
                 {/* ── HEADER ── */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-zinc-50 border border-zinc-100 shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="h-11 w-11 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200">
+                        <div className="h-11 w-11 rounded-xl bg-purple-600 flex items-center justify-center shadow-md shadow-purple-200">
                             <Building2 className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Directory</p>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Master Data</p>
                             <h1 className="text-xl font-bold tracking-tight text-zinc-900">Startups</h1>
                         </div>
                     </div>
+
+                    {/* Master Data Toggle */}
+                    <div className="hidden lg:flex p-1 bg-zinc-200/50 rounded-lg shrink-0">
+                        <div className="px-5 py-1.5 text-xs font-bold rounded-md bg-white text-zinc-900 shadow-sm">Startups</div>
+                        <Link href="/dashboard/stories" className="px-5 py-1.5 text-xs font-bold rounded-md text-zinc-500 hover:text-zinc-700 transition-all">Blogs</Link>
+                    </div>
+
                     <div className="flex items-center gap-3">
                         <div className="hidden sm:flex flex-col items-end mr-1">
                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total</span>
@@ -113,7 +120,7 @@ export default function StartupsPage() {
                         </div>
                         <button
                             onClick={() => router.push("/dashboard/startups/new")}
-                            className="flex items-center gap-2 h-10 px-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm shadow-indigo-200"
+                            className="flex items-center gap-2 h-10 px-5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm shadow-purple-200"
                             suppressHydrationWarning
                         >
                             <Plus size={15} strokeWidth={2.5} />
@@ -199,8 +206,8 @@ export default function StartupsPage() {
                                     <tr>
                                         <td colSpan={5}>
                                             <div className="flex flex-col items-center justify-center py-20 text-center">
-                                                <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4">
-                                                    <Building2 size={22} className="text-indigo-400" />
+                                                <div className="h-12 w-12 rounded-2xl bg-purple-50 flex items-center justify-center mb-4">
+                                                    <Building2 size={22} className="text-purple-400" />
                                                 </div>
                                                 <p className="text-sm font-bold text-slate-500">No startups found</p>
                                                 <p className="text-xs text-slate-400 mt-1">Try adjusting your filters</p>
@@ -221,7 +228,7 @@ export default function StartupsPage() {
                                                             className="h-full w-full object-contain"
                                                         />
                                                     ) : (
-                                                        <div className="h-full w-full flex items-center justify-center bg-indigo-50 text-indigo-500 font-black text-xs rounded-lg">
+                                                        <div className="h-full w-full flex items-center justify-center bg-purple-50 text-purple-500 font-black text-xs rounded-lg">
                                                             {startup.name?.[0] || "S"}
                                                         </div>
                                                     )}
@@ -229,7 +236,7 @@ export default function StartupsPage() {
                                                 <div className="flex flex-col">
                                                     <Link
                                                         href={`/dashboard/startups/${startup.slug}/edit`}
-                                                        className="font-bold text-slate-800 text-[13px] hover:text-indigo-600 transition-colors truncate max-w-[220px]"
+                                                        className="font-bold text-slate-800 text-[13px] hover:text-purple-600 transition-colors truncate max-w-[220px]"
                                                     >
                                                         {startup.name}
                                                     </Link>
@@ -240,7 +247,7 @@ export default function StartupsPage() {
 
                                         {/* Category */}
                                         <td className="px-4 py-3.5 text-center">
-                                            <span className="inline-flex px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-100">
+                                            <span className="inline-flex px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-100">
                                                 {typeof startup.category === "string" ? startup.category : startup.category?.name || "General"}
                                             </span>
                                         </td>
@@ -287,7 +294,7 @@ export default function StartupsPage() {
                                                 <button
                                                     onClick={() => router.push(`/dashboard/startups/${startup.slug}/edit`)}
                                                     title="Edit"
-                                                    className="h-8 w-8 rounded-lg bg-indigo-100 hover:bg-indigo-600 text-indigo-600 hover:text-white transition-all flex items-center justify-center"
+                                                    className="h-8 w-8 rounded-lg bg-purple-100 hover:bg-purple-600 text-purple-600 hover:text-white transition-all flex items-center justify-center"
                                                 >
                                                     <Edit size={13} />
                                                 </button>
@@ -312,7 +319,7 @@ export default function StartupsPage() {
                                 Showing {startups.length} of {pagination?.count ?? 0} startups
                             </span>
                             {searchQuery && (
-                                <button onClick={() => setSearchQuery("")} className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-1">
+                                <button onClick={() => setSearchQuery("")} className="text-[10px] font-bold text-purple-600 hover:underline flex items-center gap-1">
                                     <X size={10} /> Clear filter
                                 </button>
                             )}
