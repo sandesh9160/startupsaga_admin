@@ -122,6 +122,14 @@ export default function NewStartupPage() {
     });
 
     const [tagInput, setTagInput] = useState("");
+    const [slugLocked, setSlugLocked] = useState(false);
+
+    // Helper: convert name to slug
+    const toSlug = (name: string) =>
+        name.toLowerCase().trim()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-");
 
     useEffect(() => {
         const loadData = async () => {
@@ -414,27 +422,51 @@ export default function NewStartupPage() {
                                         <Input
                                             placeholder="e.g. Zomato"
                                             value={formData.name}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            onBlur={() => !formData.slug && setFormData({ ...formData, slug: formData.name.toLowerCase().replace(/\s+/g, '-') })}
+                                            onChange={(e) => {
+                                                const newName = e.target.value;
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    name: newName,
+                                                    // live-sync slug while not manually locked
+                                                    ...(slugLocked ? {} : { slug: toSlug(newName) }),
+                                                }));
+                                            }}
                                             className="h-10 px-3 rounded-xl border-zinc-200"
                                             required
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Slug</Label>
+                                        <div className="flex items-center justify-between ml-1">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Slug</Label>
+                                            {!slugLocked && (
+                                                <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-500">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                                    auto-sync
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="relative">
                                             <Input
                                                 placeholder="zomato"
                                                 value={formData.slug}
-                                                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                                                className="h-10 px-3 rounded-xl border-zinc-200"
+                                                onChange={(e) => {
+                                                    setSlugLocked(true);
+                                                    setFormData({ ...formData, slug: e.target.value });
+                                                }}
+                                                className={cn(
+                                                    "h-10 px-3 rounded-xl border-zinc-200 pr-16",
+                                                    slugLocked ? "border-amber-200 bg-amber-50/30" : "border-emerald-200 bg-emerald-50/20"
+                                                )}
                                             />
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
                                                 className="absolute right-1 top-1 h-8 text-[9px] font-bold uppercase tracking-wider text-purple-600 hover:bg-purple-50"
-                                                onClick={() => setFormData({ ...formData, slug: formData.name.toLowerCase().replace(/\s+/g, '-') })}
+                                                onClick={() => {
+                                                    setSlugLocked(false);
+                                                    setFormData(prev => ({ ...prev, slug: toSlug(prev.name) }));
+                                                }}
                                             >
                                                 Auto
                                             </Button>

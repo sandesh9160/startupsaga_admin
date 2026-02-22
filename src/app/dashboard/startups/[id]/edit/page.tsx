@@ -38,6 +38,14 @@ export default function StartupEditPage() {
 
                 fetchAPI("/media/").then(data => setMediaItems(Array.isArray(data) ? data : [])).catch(e => console.error(e));
 
+                const rawFounders = Array.isArray(startup.founders_data) ? startup.founders_data : [];
+
+                // If founders_data is empty but we have a primary founder_name, seed it in
+                const seedFounders =
+                    rawFounders.length === 0 && startup.founder_name
+                        ? [{ name: startup.founder_name, role: "Founder", linkedin: startup.founder_linkedin || "", image: "" }]
+                        : rawFounders;
+
                 const processedStartup = {
                     ...startup,
                     category: typeof startup.category === 'object' ? startup.category?.id : startup.category,
@@ -50,6 +58,7 @@ export default function StartupEditPage() {
                     thumbnail: startup.og_image || "",
                     meta_keywords: startup.meta_keywords || "",
                     image_alt: startup.og_image_alt || "",
+                    founders_data: seedFounders,
                 };
                 setFormData(processedStartup);
                 setCategories(cats);
@@ -137,19 +146,23 @@ export default function StartupEditPage() {
         e.preventDefault();
         setIsSaving(true);
         try {
+            const foundersList: any[] = formData.founders_data || [];
+            const primaryFounder = foundersList[0];
+
             const cleanData = {
                 name: formData.name,
                 tagline: formData.tagline || "",
                 description: formData.description,
                 website_url: formData.website_url,
-                founder_name: formData.founder_name,
-                founder_linkedin: formData.founder_linkedin,
+                // Keep primary founder fields in sync with founders_data[0]
+                founder_name: primaryFounder?.name || formData.founder_name || "",
+                founder_linkedin: primaryFounder?.linkedin || formData.founder_linkedin || "",
                 founded_year: formData.founded_year ? parseInt(formData.founded_year.toString()) : undefined,
                 funding_stage: formData.stage || "",
                 business_model: formData.business_model || "",
                 industry_tags: formData.sector ? [formData.sector] : [],
                 team_size: formData.team_size || "",
-                founders_data: formData.founders_data || [],
+                founders_data: foundersList,
                 is_featured: formData.is_featured,
                 status: formData.status,
                 category: formData.category,
