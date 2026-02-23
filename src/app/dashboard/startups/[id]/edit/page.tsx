@@ -9,11 +9,56 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Save, Loader2, BookOpen, User, Tag, Eye, ExternalLink, Sparkles, Upload, Image as ImageIcon, X, Building, Edit, Plus, ChevronLeft, Globe, Zap } from "lucide-react";
+import {
+    Save,
+    Loader2,
+    BookOpen,
+    User,
+    Tag,
+    Eye,
+    ExternalLink,
+    Sparkles,
+    Upload,
+    Image as ImageIcon,
+    X,
+    Building,
+    Edit,
+    Plus,
+    ChevronLeft,
+    Globe,
+    Zap,
+    List,
+    CheckCircle2,
+    PenTool,
+    Layout,
+    FileText,
+    MapPin,
+    Calendar,
+    Lightbulb,
+    Trash2,
+    MoreHorizontal
+} from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { RichTextEditor } from "@/components/dashboard/RichTextEditor";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { getSafeImageSrc } from "@/lib/images";
+import { generateContent } from "@/lib/api";
+import { getPromptTemplate, fillTemplate } from "@/lib/prompt-manager";
 
 export default function StartupEditPage() {
     const router = useRouter();
@@ -75,7 +120,77 @@ export default function StartupEditPage() {
         if (startupSlug) loadData();
     }, [startupSlug, router]);
 
+    const [isGenerating, setIsGenerating] = useState(false);
     const [isGeneratingSEO, setIsGeneratingSEO] = useState(false);
+
+    const sectionTemplates = [
+        { title: "The Problem", placeholder: "Describe the problem this startup is solving..." },
+        { title: "The Solution", placeholder: "Explain how the startup solves this problem..." },
+        { title: "Founder Journey", placeholder: "Share the founder's background and journey..." },
+        { title: "Revenue Model", placeholder: "Describe how the startup makes money..." },
+        { title: "Traction & Growth", placeholder: "Share key metrics and growth milestones..." },
+        { title: "Future Plans", placeholder: "What's next for this startup..." }
+    ];
+
+    const generateSlugFromText = (text: string): string => {
+        const stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'as', 'from', 'by'];
+        return text.toLowerCase().trim().replace(/[^\w\s-]/g, '').split(/\s+/).filter(word => word.length > 0 && !stopWords.includes(word)).slice(0, 8).join('-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+    };
+
+    const handleWriteWithAI = async () => {
+        if (!formData.name) {
+            toast.error("Please enter a startup name first!");
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            let template = await getPromptTemplate("Startup Journey Generator");
+            if (!template) {
+                template = "Write a compelling startup journey for a startup named {title}. Include sections for The Problem, The Solution, and Founder Journey. Use professional editorial tone.";
+            }
+            const prompt = fillTemplate(template, { title: formData.name });
+            const result = await generateContent(prompt);
+            if (result.content) {
+                setFormData(prev => ({ ...prev, description: result.content }));
+                toast.success("✨ AI-generated content ready!");
+            }
+        } catch (err: any) {
+            toast.error(`AI Error: ${err.message || "Failed to generate content"}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateSlug = async () => {
+        if (!formData.name) {
+            toast.error("Enter startup name first!");
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            const template = await getPromptTemplate("Slug Generator");
+            const prompt = fillTemplate(template || "Generate a clean URL slug for: {title}", { title: formData.name });
+            const result = await generateContent(prompt);
+            if (result.content) {
+                setFormData(prev => ({ ...prev, slug: generateSlugFromText(result.content) }));
+                toast.success("✨ Slug generated!");
+            }
+        } catch (err) {
+            toast.error("Failed to generate slug");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleAddStandardSection = (template: { title: string; placeholder: string }) => {
+        const sectionHtml = `\n<h2 id="${template.title.toLowerCase().replace(/\s+/g, '-')}">${template.title}</h2>\n<p>${template.placeholder}</p>\n`;
+        setFormData(prev => ({ ...prev, description: (prev.description || "") + sectionHtml }));
+    };
+
+    const handleAddEmptySection = () => {
+        const sectionHtml = `\n<h2>New Section</h2>\n<p>Start writing here...</p>\n`;
+        setFormData(prev => ({ ...prev, description: (prev.description || "") + sectionHtml }));
+    };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
         const file = e.target.files?.[0];
@@ -241,514 +356,336 @@ export default function StartupEditPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* ── LEFT COLUMN ── */}
-                    <div className="lg:col-span-2 space-y-5">
+                    <div className="lg:col-span-8 space-y-6">
 
-                        {/* Startup Details */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center gap-2.5">
-                                <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
-                                    <Building className="h-3 w-3 text-white" />
-                                </div>
-                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Startup Details</span>
-                            </div>
-                            <div className="p-5 space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Name</Label>
-                                        <Input
-                                            value={formData.name || ""}
-                                            onChange={(e) => handleChange("name", e.target.value)}
-                                            className="h-9 rounded-xl text-sm border-zinc-200 bg-zinc-50 focus:bg-white transition-all"
-                                            placeholder="Startup name"
-                                        />
+                        {/* Startup Details Card */}
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50">
+                                <CardTitle className="text-[10px] font-black flex items-center gap-2.5 text-zinc-500 uppercase tracking-widest">
+                                    <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
+                                        <PenTool className="h-3 w-3 text-white" />
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Tagline</Label>
-                                        <Input
-                                            value={formData.tagline || ""}
-                                            onChange={(e) => handleChange("tagline", e.target.value)}
-                                            className="h-9 rounded-xl text-sm border-zinc-200 bg-zinc-50 focus:bg-white transition-all"
-                                            placeholder="Short pitch"
-                                        />
+                                    Startup Details
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-6 space-y-6">
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                                            <FileText className="h-3.5 w-3.5" />
+                                            Headline
+                                        </Label>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-[10px] font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-all"
+                                            onClick={handleGenerateSlug}
+                                        >
+                                            <Sparkles className="h-3 w-3 mr-1" />
+                                            Generate Slug
+                                        </Button>
                                     </div>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Description</Label>
-                                    <Textarea
-                                        value={formData.description || ""}
-                                        onChange={(e) => handleChange("description", e.target.value)}
-                                        className="min-h-[80px] rounded-xl text-sm resize-none border-zinc-200 bg-zinc-50 focus:bg-white transition-all"
-                                        placeholder="Company description..."
+                                    <Input
+                                        placeholder="Zomato, Zepto, etc."
+                                        value={formData.name || ""}
+                                        onChange={(e) => handleChange("name", e.target.value)}
+                                        className="h-14 text-base font-bold rounded-xl bg-secondary border-border focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all"
                                     />
                                 </div>
 
-                                {/* Logo + OG Image */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 border-t border-zinc-100">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Logo</Label>
-                                        <div className="flex flex-col gap-2">
-                                            <div
-                                                onClick={() => document.getElementById('logo-upload')?.click()}
-                                                className="h-20 w-20 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:border-purple-300 hover:bg-purple-50/20 transition-all"
-                                            >
-                                                {formData.logo ? (
-                                                    <>
-                                                        <img src={getSafeImageSrc(formData.logo)} alt="Logo" className="h-full w-full object-contain p-2.5" />
-                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <span className="text-white text-[9px] font-bold bg-black/20 px-2 py-1 rounded-md uppercase">Change</span>
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <div className="flex flex-col items-center gap-1 opacity-40 group-hover:opacity-70 transition-all">
-                                                        <Upload className="h-4 w-4" />
-                                                        <span className="text-[9px] font-bold uppercase">Upload</span>
-                                                    </div>
-                                                )}
-                                                <input id="logo-upload" type="file" className="hidden" onChange={(e) => handleImageUpload(e, "logo")} />
-                                            </div>
-                                            <select
-                                                className="w-full h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-2 text-[11px] text-zinc-700 outline-none focus:bg-white transition-all"
-                                                value={formData.logo || ""}
-                                                onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                                            >
-                                                <option value="">Pick from Media Library</option>
-                                                {mediaItems.map((m) => (
-                                                    <option key={m.id} value={m.url}>{m.title || m.url || "Untitled"}</option>
-                                                ))}
-                                            </select>
-                                            <Input
-                                                placeholder="Or paste logo URL..."
-                                                value={formData.logo || ""}
-                                                onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                                                className="h-9 rounded-xl bg-zinc-50 border-zinc-200 text-[11px] focus:bg-white transition-all"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Cover Image (OG)</Label>
-                                        <div className="flex flex-col gap-2">
-                                            <div
-                                                onClick={() => document.getElementById('og-upload')?.click()}
-                                                className="aspect-video w-full rounded-xl bg-zinc-50 border border-dashed border-zinc-200 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:border-purple-300 hover:bg-purple-50/20 transition-all"
-                                            >
-                                                {formData.thumbnail ? (
-                                                    <>
-                                                        <img src={getSafeImageSrc(formData.thumbnail)} alt="OG" className="h-full w-full object-cover" />
-                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <span className="text-white text-[9px] font-bold bg-black/20 px-2.5 py-1.5 rounded-md uppercase">Change</span>
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <div className="flex flex-col items-center gap-1.5 opacity-40 group-hover:opacity-70 transition-all">
-                                                        <ImageIcon className="h-5 w-5" />
-                                                        <span className="text-[9px] font-bold uppercase">Upload</span>
-                                                    </div>
-                                                )}
-                                                <input id="og-upload" type="file" className="hidden" onChange={(e) => handleImageUpload(e, "thumbnail")} />
-                                            </div>
-                                            <select
-                                                className="w-full h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-2 text-[11px] text-zinc-700 outline-none focus:bg-white transition-all"
-                                                value={formData.thumbnail || ""}
-                                                onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
-                                            >
-                                                <option value="">Pick from Media Library</option>
-                                                {mediaItems.map((m) => (
-                                                    <option key={m.id} value={m.url}>{m.title || m.url || "Untitled"}</option>
-                                                ))}
-                                            </select>
-                                            <Input
-                                                placeholder="Or paste image URL..."
-                                                value={formData.thumbnail || ""}
-                                                onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
-                                                className="h-9 rounded-xl bg-zinc-50 border-zinc-200 text-[11px] focus:bg-white transition-all"
-                                            />
-                                        </div>
-                                    </div>
+                                <div className="space-y-3">
+                                    <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                                        <Lightbulb className="h-3.5 w-3.5" />
+                                        Excerpt (TL;DR)
+                                    </Label>
+                                    <Textarea
+                                        placeholder="Brief summary that appears at the top of the startup..."
+                                        value={formData.tagline || ""}
+                                        onChange={(e) => handleChange("tagline", e.target.value)}
+                                        className="min-h-[100px] text-sm rounded-xl bg-secondary border-border focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                                    />
                                 </div>
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
 
-                        {/* Categorization */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center gap-2.5">
-                                <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
-                                    <Tag className="h-3 w-3 text-white" />
-                                </div>
-                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Categorization</span>
-                            </div>
-                            <div className="p-5">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Category</Label>
-                                        <select
-                                            className="w-full h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs text-zinc-700 outline-none focus:bg-white transition-all"
-                                            value={formData.category || ""}
-                                            onChange={(e) => handleChange("category", e.target.value)}
-                                        >
-                                            <option value="">None</option>
-                                            {categories.map((c) => (
-                                                <option key={c.id} value={c.id}>{c.name}</option>
-                                            ))}
-                                        </select>
+                        {/* Startup Journey (Rich Editor) */}
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+                                <CardTitle className="text-[10px] font-black flex items-center gap-2.5 text-zinc-500 uppercase tracking-widest">
+                                    <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
+                                        <Layout className="h-3 w-3 text-white" />
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">City</Label>
-                                        <select
-                                            className="w-full h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs text-zinc-700 outline-none focus:bg-white transition-all"
-                                            value={formData.city || ""}
-                                            onChange={(e) => handleChange("city", e.target.value)}
-                                        >
-                                            <option value="">Global / Remote</option>
-                                            {cities.map((c) => (
-                                                <option key={c.id} value={c.id}>{c.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Stage</Label>
-                                        <select
-                                            className="w-full h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs text-zinc-700 outline-none focus:bg-white transition-all"
-                                            value={formData.stage || ""}
-                                            onChange={(e) => handleChange("stage", e.target.value)}
-                                        >
-                                            <option value="">Unspecified</option>
-                                            {["Bootstrapped", "Pre-Seed", "Seed", "Series A", "Series B+", "IPO", "Unicorn"].map((s) => (
-                                                <option key={s} value={s}>{s}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Sector</Label>
-                                        <select
-                                            className="w-full h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs text-zinc-700 outline-none focus:bg-white transition-all"
-                                            value={formData.sector || ""}
-                                            onChange={(e) => handleChange("sector", e.target.value)}
-                                        >
-                                            <option value="">Multi-Sector</option>
-                                            {["B2B SaaS", "B2C Consumer", "Marketplace", "Fintech", "Healthtech", "Deeptech/AI"].map((s) => (
-                                                <option key={s} value={s}>{s}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Founded</Label>
-                                            <Input
-                                                type="number"
-                                                value={formData.founded_year || ""}
-                                                onChange={(e) => handleChange("founded_year", parseInt(e.target.value))}
-                                                className="h-9 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white text-xs transition-all"
-                                                placeholder="YYYY"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Team Size</Label>
-                                            <select
-                                                className="w-full h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs text-zinc-700 outline-none focus:bg-white transition-all"
-                                                value={formData.team_size || ""}
-                                                onChange={(e) => handleChange("team_size", e.target.value)}
-                                            >
-                                                <option value="">N/A</option>
-                                                {["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"].map((s) => (
-                                                    <option key={s} value={s}>{s}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Business Model</Label>
-                                        <select
-                                            className="w-full h-9 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs text-zinc-700 outline-none focus:bg-white transition-all"
-                                            value={formData.business_model || ""}
-                                            onChange={(e) => handleChange("business_model", e.target.value)}
-                                        >
-                                            <option value="">None</option>
-                                            {["b2b", "b2c", "b2b2c", "d2c", "saas", "marketplace", "subscription", "freemium", "platform"].map((m) => (
-                                                <option key={m} value={m}>{m.toUpperCase()}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Status */}
-                                    <div className="space-y-1.5 md:col-span-2">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Status</Label>
-                                        <div className="flex gap-2">
-                                            {['draft', 'published', 'blocked'].map((status) => (
-                                                <button
-                                                    key={status}
-                                                    type="button"
-                                                    onClick={() => handleChange("status", status)}
-                                                    className={cn(
-                                                        "flex-1 h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border",
-                                                        formData.status === status
-                                                            ? status === 'published' ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
-                                                                : status === 'blocked' ? "bg-rose-500 border-rose-500 text-white shadow-sm"
-                                                                    : "bg-amber-500 border-amber-500 text-white shadow-sm"
-                                                            : "bg-white border-zinc-200 text-zinc-500 hover:bg-zinc-50"
-                                                    )}
-                                                >
-                                                    {status}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Related Stories */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
-                                        <BookOpen className="h-3 w-3 text-white" />
-                                    </div>
-                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Related Stories</span>
-                                </div>
+                                    Story Content
+                                </CardTitle>
                                 <div className="flex items-center gap-2">
-                                    {formData.related_stories && formData.related_stories.length > 0 && (
-                                        <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-200 font-bold text-[9px] px-2 py-0 h-5">
-                                            {formData.related_stories.length}
-                                        </Badge>
-                                    )}
-                                    <Link
-                                        href={`/dashboard/stories/new?startup=${formData.id}`}
-                                        className="h-7 px-2.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 flex items-center gap-1 text-[10px] font-bold text-zinc-600 transition-all"
-                                    >
-                                        <Plus className="h-3 w-3" /> New Story
-                                    </Link>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="sm" className="h-7 px-3 rounded-lg text-[9px] font-black bg-zinc-100 hover:bg-zinc-200 transition-all">
+                                                <Plus className="h-3 w-3 mr-1.5" /> Insert Section
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl">
+                                            {sectionTemplates.map((template) => (
+                                                <DropdownMenuItem key={template.title} onClick={() => handleAddStandardSection(template)}>
+                                                    {template.title}
+                                                </DropdownMenuItem>
+                                            ))}
+                                            <DropdownMenuItem onClick={handleAddEmptySection}>Custom Section</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    <Button onClick={handleWriteWithAI} disabled={isGenerating} className="h-7 px-3 rounded-lg text-[9px] font-black bg-purple-600 hover:bg-purple-700 text-white transition-all border-none">
+                                        {isGenerating ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Sparkles className="h-3 w-3 mr-1.5" />}
+                                        AI Writer
+                                    </Button>
                                 </div>
-                            </div>
-                            <div className="p-5">
-                                {formData.related_stories && formData.related_stories.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {formData.related_stories.map((story: any) => (
-                                            <div key={story.id} className="flex items-center gap-3 p-3 bg-zinc-50 rounded-xl border border-zinc-100 hover:border-zinc-200 transition-all group">
-                                                {story.thumbnail && (
-                                                    <div className="h-10 w-14 rounded-lg bg-zinc-100 overflow-hidden shrink-0 border border-zinc-200/50">
-                                                        <img src={getSafeImageSrc(story.thumbnail)} alt="" className="h-full w-full object-cover" />
-                                                    </div>
-                                                )}
-                                                <div className="min-w-0 flex-1">
-                                                    <h3 className="font-bold text-[11px] text-zinc-900 truncate">{story.title}</h3>
-                                                    <Badge variant={story.status === "published" ? "default" : "secondary"} className={cn(
-                                                        "text-[8px] font-bold uppercase tracking-tight px-1 h-3.5 mt-0.5",
-                                                        story.status === 'published' ? "bg-emerald-500" : "bg-zinc-200 text-zinc-500"
-                                                    )}>
-                                                        {story.status}
-                                                    </Badge>
-                                                </div>
-                                                <div className="flex items-center gap-1 shrink-0">
-                                                    <Link href={`/dashboard/stories/new?editId=${story.id}`} className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-violet-50 text-zinc-400 hover:text-violet-600 transition-all">
-                                                        <Edit className="h-3.5 w-3.5" />
-                                                    </Link>
-                                                    {story.status === "published" && (
-                                                        <a href={`/stories/${story.slug}`} target="_blank" rel="noopener noreferrer" className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-sky-50 text-zinc-400 hover:text-sky-600 transition-all">
-                                                            <ExternalLink className="h-3.5 w-3.5" />
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <RichTextEditor
+                                    content={formData.description || ""}
+                                    onChange={(content) => handleChange("description", content)}
+                                    placeholder="Tell the full story..."
+                                />
+                            </CardContent>
+                        </Card>
+
+
+                        {/* Visuals */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
+                            <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center gap-2.5">
+                                    <ImageIcon className="h-3.5 w-3.5 text-zinc-500" />
+                                    <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Brand Logo</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-4 space-y-3">
+                                    <div
+                                        onClick={() => document.getElementById('logo-upload')?.click()}
+                                        className="h-24 w-24 rounded-2xl bg-zinc-50 border-2 border-dashed border-zinc-100 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:border-purple-300 hover:bg-purple-50/20 transition-all mx-auto"
+                                    >
+                                        {formData.logo ? (
+                                            <img src={getSafeImageSrc(formData.logo)} alt="Logo" className="h-full w-full object-contain p-3" />
+                                        ) : (
+                                            <Upload className="h-5 w-5 text-zinc-300 group-hover:text-purple-400 transition-colors" />
+                                        )}
+                                        <input id="logo-upload" type="file" className="hidden" onChange={(e) => handleImageUpload(e, "logo")} />
                                     </div>
-                                ) : (
-                                    <div className="text-center py-10 border-2 border-dashed border-zinc-100 rounded-xl bg-zinc-50/30">
-                                        <BookOpen className="h-6 w-6 text-zinc-200 mx-auto mb-2" />
-                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">No stories connected</p>
+                                    <Input
+                                        placeholder="Logo URL..."
+                                        value={formData.logo || ""}
+                                        onChange={(e) => handleChange("logo", e.target.value)}
+                                        className="h-9 rounded-xl bg-secondary border-border text-[10px] focus:bg-white transition-all"
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center gap-2.5">
+                                    <FileText className="h-3.5 w-3.5 text-zinc-500" />
+                                    <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Narrative Thumb (OG)</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-4 space-y-3">
+                                    <div
+                                        onClick={() => document.getElementById('og-upload')?.click()}
+                                        className="aspect-[16/9] w-full rounded-2xl bg-zinc-50 border-2 border-dashed border-zinc-100 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:border-purple-300 hover:bg-purple-50/20 transition-all"
+                                    >
+                                        {formData.thumbnail ? (
+                                            <img src={getSafeImageSrc(formData.thumbnail)} alt="OG" className="h-full w-full object-cover" />
+                                        ) : (
+                                            <ImageIcon className="h-6 w-6 text-zinc-300 group-hover:text-purple-400 transition-colors" />
+                                        )}
+                                        <input id="og-upload" type="file" className="hidden" onChange={(e) => handleImageUpload(e, "thumbnail")} />
                                     </div>
-                                )}
-                            </div>
+                                    <Input
+                                        placeholder="OG Image URL..."
+                                        value={formData.thumbnail || ""}
+                                        onChange={(e) => handleChange("thumbnail", e.target.value)}
+                                        className="h-9 rounded-xl bg-secondary border-border text-[10px] focus:bg-white transition-all"
+                                    />
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
 
                     {/* ── RIGHT SIDEBAR ── */}
-                    <div className="space-y-5">
+                    <div className="lg:col-span-4 space-y-6">
 
-                        {/* Founders */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
-                                        <User className="h-3 w-3 text-white" />
-                                    </div>
-                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Founders</span>
+                        {/* Publication Card */}
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center gap-2.5">
+                                <div className="h-6 w-6 rounded-lg bg-orange-500 flex items-center justify-center">
+                                    <CheckCircle2 className="h-3 w-3 text-white" />
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={addFounder}
-                                    className="h-7 px-2.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 flex items-center gap-1 text-[10px] font-bold text-zinc-600 transition-all"
-                                >
-                                    <Plus className="h-3 w-3" /> Add
-                                </button>
-                            </div>
-                            <div className="p-4 space-y-3">
-                                {(formData.founders_data || []).length === 0 && (
-                                    <div className="text-center py-6 border-2 border-dashed border-zinc-100 rounded-xl bg-zinc-50/30">
-                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">No founders listed</p>
+                                <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Publication</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-6 space-y-4">
+                                <div className="space-y-3">
+                                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Slug</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            value={formData.slug || ""}
+                                            onChange={(e) => handleChange("slug", e.target.value)}
+                                            className="h-9 rounded-xl bg-secondary border-border text-[11px] font-bold transition-all focus:bg-white flex-1"
+                                            placeholder="zomato-journey"
+                                        />
+                                        <Button onClick={handleGenerateSlug} variant="ghost" size="sm" className="h-9 w-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 shrink-0">
+                                            <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                                        </Button>
                                     </div>
-                                )}
-                                {(formData.founders_data || []).map((founder: any, idx: number) => (
-                                    <div key={idx} className="p-3 rounded-xl bg-zinc-50 border border-zinc-100 space-y-2 relative group">
-                                        <button
-                                            type="button"
-                                            onClick={() => removeFounder(idx)}
-                                            className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-zinc-300 hover:text-rose-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all"
-                                        >
-                                            <X className="h-2.5 w-2.5" />
-                                        </button>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <Input
-                                                value={founder.name}
-                                                onChange={(e) => updateFounder(idx, "name", e.target.value)}
-                                                className="h-8 rounded-lg border-zinc-200 bg-white text-[11px]"
-                                                placeholder="Name"
-                                            />
-                                            <Input
-                                                value={founder.role}
-                                                onChange={(e) => updateFounder(idx, "role", e.target.value)}
-                                                className="h-8 rounded-lg border-zinc-200 bg-white text-[11px]"
-                                                placeholder="Role"
-                                            />
-                                        </div>
-                                        <div className="relative">
-                                            <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-300" />
-                                            <Input
-                                                value={founder.linkedin}
-                                                onChange={(e) => updateFounder(idx, "linkedin", e.target.value)}
-                                                className="h-8 rounded-lg border-zinc-200 bg-white pl-7 text-[11px]"
-                                                placeholder="LinkedIn URL"
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                                </div>
 
-                        {/* SEO Settings */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Category</Label>
+                                        <Select value={formData.category?.toString() || ""} onValueChange={(v) => handleChange("category", v)}>
+                                            <SelectTrigger className="h-9 rounded-xl bg-secondary border-border text-[11px] font-bold">
+                                                <SelectValue placeholder="Pick..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {categories.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">City</Label>
+                                        <Select value={formData.city?.toString() || ""} onValueChange={(v) => handleChange("city", v)}>
+                                            <SelectTrigger className="h-9 rounded-xl bg-secondary border-border text-[11px] font-bold">
+                                                <SelectValue placeholder="Pick..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {cities.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Stage</Label>
+                                    <Select value={formData.stage || ""} onValueChange={(v) => handleChange("stage", v)}>
+                                        <SelectTrigger className="h-9 rounded-xl bg-secondary border-border text-[11px] font-bold">
+                                            <SelectValue placeholder="Funding Stage" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {["Bootstrapped", "Pre-Seed", "Seed", "Series A", "Series B+", "IPO", "Unicorn"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span className="text-[11px] font-bold text-zinc-600 capitalize">{formData.status}</span>
+                                    </div>
+                                    <Switch
+                                        checked={formData.status === 'published'}
+                                        onCheckedChange={(checked) => handleChange("status", checked ? 'published' : 'draft')}
+                                        className="data-[state=checked]:bg-emerald-600"
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* TOC Outline Sidebar */}
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center gap-2.5">
+                                <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
+                                    <List className="h-3 w-3 text-white" />
+                                </div>
+                                <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Content Outline</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-4">
+                                {(() => {
+                                    const matches = [...(formData.description || "").matchAll(/<h[23][^>]*>([^<]*)<\/h[23]>/gi)];
+                                    if (matches.length === 0) return <p className="text-[10px] font-bold text-zinc-400 uppercase text-center py-4">No headings</p>;
+                                    return (
+                                        <div className="flex flex-col gap-1.5">
+                                            <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-zinc-400 border-l-2 border-purple-200">1. TL;DR (Auto)</div>
+                                            {matches.map((m, i) => (
+                                                <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-zinc-600 border-l-2 border-zinc-100 italic">{i + 2}. {m[1].trim()}</div>
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
+                            </CardContent>
+                        </Card>
+
+                        {/* SEO Features Sidebar */}
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+                                <CardTitle className="text-[10px] font-black flex items-center gap-2.5 text-zinc-500 uppercase tracking-widest">
+                                    <div className="h-6 w-6 rounded-lg bg-amber-500 flex items-center justify-center">
                                         <Sparkles className="h-3 w-3 text-white" />
                                     </div>
-                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">SEO Settings</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={handleGenerateSEO}
-                                    disabled={isGeneratingSEO}
-                                    className="h-7 px-2.5 rounded-lg border border-zinc-200 bg-white hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 flex items-center gap-1.5 text-[10px] font-bold text-zinc-600 transition-all"
-                                >
-                                    {isGeneratingSEO ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-                                    Auto-Fill
-                                </button>
-                            </div>
-                            <div className="p-4 space-y-4">
+                                    SEO Metadata
+                                </CardTitle>
+                                <Button onClick={handleGenerateSEO} disabled={isGeneratingSEO} variant="ghost" className="h-7 px-2 rounded-lg text-[9px] font-black text-amber-600 hover:bg-amber-50">
+                                    {isGeneratingSEO ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3 mr-1" />} Auto
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="p-4 space-y-4">
                                 <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Meta Title</Label>
-                                        <span className={cn("text-[9px] font-bold", (formData.meta_title?.length || 0) > 60 ? "text-rose-500" : "text-zinc-300")}>
-                                            {formData.meta_title?.length || 0}/60
-                                        </span>
-                                    </div>
+                                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Meta Title</Label>
                                     <Input
                                         value={formData.meta_title || ""}
                                         onChange={(e) => handleChange("meta_title", e.target.value)}
-                                        className="h-9 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white text-xs transition-all"
-                                        placeholder="SEO-optimized title (max 60 chars)"
+                                        className="h-8 rounded-lg bg-secondary border-border text-[10px] focus:bg-white"
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Meta Description</Label>
-                                        <span className={cn("text-[9px] font-bold", (formData.meta_description?.length || 0) > 160 ? "text-rose-500" : "text-zinc-300")}>
-                                            {formData.meta_description?.length || 0}/160
-                                        </span>
-                                    </div>
+                                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Meta Description</Label>
                                     <Textarea
                                         value={formData.meta_description || ""}
                                         onChange={(e) => handleChange("meta_description", e.target.value)}
-                                        className="min-h-[80px] rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white text-xs resize-none transition-all"
-                                        placeholder="SEO-optimized description (max 160 chars)"
+                                        className="min-h-[60px] rounded-lg bg-secondary border-border text-[10px] p-2 resize-none"
                                     />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Meta Keywords</Label>
-                                    <Input
-                                        value={formData.meta_keywords || ""}
-                                        onChange={(e) => handleChange("meta_keywords", e.target.value)}
-                                        className="h-9 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white text-xs transition-all"
-                                        placeholder="Keywords, separated, by, commas"
+                                <div className="flex items-center justify-between pt-2">
+                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Featured</span>
+                                    <Switch
+                                        checked={formData.is_featured || false}
+                                        onCheckedChange={(v) => handleChange("is_featured", v)}
                                     />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Image Alt Text</Label>
-                                    <Input
-                                        value={formData.image_alt || ""}
-                                        onChange={(e) => handleChange("image_alt", e.target.value)}
-                                        className="h-9 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white text-xs transition-all"
-                                        placeholder="Descriptive alt text for cover image"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
 
-                        {/* Social & Web */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center gap-2.5">
-                                <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
+                        {/* Social & Web Card */}
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center gap-2.5">
+                                <div className="h-6 w-6 rounded-lg bg-blue-600 flex items-center justify-center">
                                     <ExternalLink className="h-3 w-3 text-white" />
                                 </div>
-                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Social & Web</span>
-                            </div>
-                            <div className="p-4 space-y-3">
+                                <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Social & Web</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-5 space-y-4">
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Website</Label>
+                                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Website</Label>
                                     <div className="relative">
                                         <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-300" />
                                         <Input
                                             type="url"
                                             value={formData.website_url || ""}
                                             onChange={(e) => handleChange("website_url", e.target.value)}
-                                            className="h-9 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white pl-8 text-xs transition-all"
+                                            className="h-9 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white pl-9 text-[11px] transition-all"
                                             placeholder="https://company.com"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Founder LinkedIn</Label>
+                                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Founder LinkedIn</Label>
                                     <div className="relative">
                                         <User className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-300" />
                                         <Input
                                             type="url"
                                             value={formData.founder_linkedin || ""}
                                             onChange={(e) => handleChange("founder_linkedin", e.target.value)}
-                                            className="h-9 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white pl-8 text-xs transition-all"
+                                            className="h-9 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white pl-9 text-[11px] transition-all"
                                             placeholder="linkedin.com/in/user"
                                         />
                                     </div>
                                 </div>
-
-                                {/* Featured toggle */}
-                                <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
-                                    <div>
-                                        <div className="text-sm font-black text-zinc-900">Featured</div>
-                                        <div className="text-[10px] text-zinc-500">Highlight on homepage</div>
-                                    </div>
-                                    <Switch
-                                        checked={formData.is_featured || false}
-                                        onCheckedChange={(checked) => handleChange("is_featured", checked)}
-                                        className="data-[state=checked]:bg-purple-600 transition-all"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </div>
