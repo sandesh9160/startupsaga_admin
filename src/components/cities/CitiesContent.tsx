@@ -36,7 +36,7 @@ export function CitiesContent() {
     const formattedUnicorns = isMounted ? totalUnicorns.toLocaleString('en-US') : "0";
 
     return (
-        <div className="bg-white min-h-screen">
+        <div className="bg-[#FAF9F6] min-h-screen">
             {/* Header / Hero Section */}
             <section className="container-wide pt-16 pb-12 md:pt-24 md:pb-16 text-center">
                 <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-zinc-900 mb-8 font-serif leading-[1.1] max-w-4xl mx-auto tracking-tight">

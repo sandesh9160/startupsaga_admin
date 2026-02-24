@@ -769,7 +769,7 @@ function NewStoryPageContent() {
                                         Excerpt (TL;DR)
                                     </Label>
                                     <Textarea
-                                        placeholder="Brief summary that appears at the top of the story..."
+                                        placeholder="A brief summary (1-3 sentences) used for the 'Quick Highlights' box and automatically added to the story's Table of Contents."
                                         value={formData.excerpt || ""}
                                         onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                                         className="min-h-[100px] text-sm rounded-xl bg-secondary border-border focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all resize-none"

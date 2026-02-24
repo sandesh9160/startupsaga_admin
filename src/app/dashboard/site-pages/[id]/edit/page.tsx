@@ -8,9 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-    Save, Loader2, Trash2, Plus, ChevronUp, ChevronDown, Rocket, Sparkles, X, Settings, Layout, Globe, MessageSquare, Image as ImageIcon, Type, Link as LinkIcon, Menu as MenuIcon, Eye, PanelBottom, TrendingUp, Building2, MapPin, ArrowRight, User, Monitor, Tablet, Smartphone
+    Save, Loader2, Trash2, Plus, ChevronUp, ChevronDown, Rocket, Sparkles, X, Settings, Layout, Globe, MessageSquare, Image as ImageIcon, Type, Link as LinkIcon, Menu as MenuIcon, Eye, PanelBottom, TrendingUp, Building2, MapPin, ArrowRight, User, Monitor, Tablet, Smartphone, Mail
 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+// import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { fetchAPI, getPageById, generateContent } from "@/lib/api";
@@ -414,17 +414,35 @@ function SectionPreview({ section, sampleData, viewport = 'desktop' }: { section
                     switch (type) {
                         case 'hero':
                             return (
-                                <section className="relative overflow-hidden" style={{ backgroundColor: bgColor, paddingTop: paddingY ?? 64, paddingBottom: paddingY ?? 64, textAlign: align }}>
-                                    <div className="container-wide relative z-10">
-                                        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold font-serif mb-6 leading-[1.1] tracking-tight" style={{ color: textColor }}>
+                                <section className="relative overflow-hidden" style={{ backgroundColor: bgColor, paddingTop: paddingY ?? 32, paddingBottom: paddingY ?? 40, paddingLeft: paddingX ?? 0, paddingRight: paddingX ?? 0 }}>
+                                    <div className={cn(
+                                        "container-wide relative z-10",
+                                        align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center'
+                                    )}>
+                                        <h1
+                                            className={cn(
+                                                "text-3xl md:text-4xl lg:text-5xl font-bold font-serif mb-4 max-w-4xl leading-[1.1] tracking-tight",
+                                                align === 'left' ? 'mr-auto ml-0' : align === 'right' ? 'ml-auto mr-0' : 'mx-auto'
+                                            )}
+                                            style={{ color: textColor }}
+                                        >
                                             {settings.title || "Hero Title"}
                                         </h1>
-                                        <div
-                                            className="text-lg md:text-xl mb-12 max-w-2xl mx-auto leading-relaxed opacity-90 prose prose-lg prose-invert text-center decoration-slate-400"
-                                            style={{ color: textColor }}
-                                            dangerouslySetInnerHTML={{ __html: settings.subtitle || settings.body || "Hero subtitle goes here." }}
-                                        />
-                                        <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
+                                        {(settings.subtitle || settings.body) && (
+                                            <div
+                                                className={cn(
+                                                    "text-base md:text-lg mb-8 max-w-2xl leading-relaxed opacity-90 prose prose-slate decoration-slate-400",
+                                                    align === 'left' ? 'text-left mr-auto ml-0' : align === 'right' ? 'text-right ml-auto mr-0' : 'text-center mx-auto',
+                                                    (textColor === '#FFFFFF' || (textColor === '#0F172A')) ? 'prose-invert' : 'prose-zinc'
+                                                )}
+                                                style={{ color: textColor }}
+                                                dangerouslySetInnerHTML={{ __html: (settings.subtitle || settings.body) || "" }}
+                                            />
+                                        )}
+                                        <div className={cn(
+                                            "flex flex-col sm:flex-row items-center gap-5",
+                                            align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
+                                        )}>
                                             <Button size="lg" className={cn(
                                                 "w-full sm:w-auto h-14 px-10 rounded-xl border-none items-center gap-2 transition-all",
                                                 settings.buttonStyle === 'secondary' ? "bg-white hover:bg-zinc-100 text-slate-900 border border-zinc-200" :
@@ -514,9 +532,11 @@ function SectionPreview({ section, sampleData, viewport = 'desktop' }: { section
                                                 <h2 className="text-3xl md:text-5xl font-bold font-serif mb-6 text-slate-900 leading-tight">
                                                     {settings.title || (type === 'city_grid' ? "Explore by City" : "Rising Startup Hubs")}
                                                 </h2>
-                                                <p className="text-lg text-slate-500 max-w-2xl leading-relaxed">
-                                                    {settings.subtitle || "Discover the innovation hubs driving India's startup revolution."}
-                                                </p>
+                                                {settings.subtitle && (
+                                                    <p className="text-lg text-slate-500 max-w-2xl leading-relaxed">
+                                                        {settings.subtitle}
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="hidden lg:flex gap-3">
                                                 <Button variant="outline" className="rounded-full border-zinc-200">View Map</Button>
@@ -571,14 +591,44 @@ function SectionPreview({ section, sampleData, viewport = 'desktop' }: { section
 
                         case 'cta':
                             return (
-                                <section className="py-12 text-center overflow-hidden relative" style={{ backgroundColor: bgColor || '#0F172A' }}>
+                                <section
+                                    className={cn(
+                                        "py-12 overflow-hidden relative",
+                                        align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center'
+                                    )}
+                                    style={{
+                                        backgroundColor: bgColor || '#0F172A',
+                                        paddingTop: paddingY ?? 48,
+                                        paddingBottom: paddingY ?? 48,
+                                        paddingLeft: paddingX ?? 10,
+                                        paddingRight: paddingX ?? 10
+                                    }}
+                                >
                                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-600 via-white/20 to-orange-600" />
                                     <div className="container-wide relative z-10 px-4">
-                                        <h2 className="text-3xl md:text-5xl font-bold mb-6 font-serif" style={{ color: textColor || '#ffffff' }}>
+                                        <h2
+                                            className={cn(
+                                                "text-3xl md:text-5xl font-bold mb-6 font-serif",
+                                                align === 'left' ? 'mr-auto ml-0' : align === 'right' ? 'ml-auto mr-0' : 'mx-auto'
+                                            )}
+                                            style={{ color: textColor || '#ffffff' }}
+                                        >
                                             {settings.title || "Ready to launch?"}
                                         </h2>
-                                        <div className="text-lg md:text-xl mb-10 max-w-2xl mx-auto opacity-80 prose prose-invert" style={{ color: textColor || '#ffffff' }} dangerouslySetInnerHTML={{ __html: settings.subtitle || settings.body || "Join thousands of founders building the future." }} />
-                                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                        {(settings.subtitle || settings.body) && (
+                                            <div
+                                                className={cn(
+                                                    "text-lg md:text-xl mb-10 max-w-2xl opacity-80 prose prose-invert",
+                                                    align === 'left' ? 'text-left mr-auto ml-0' : align === 'right' ? 'text-right ml-auto mr-0' : 'text-center mx-auto'
+                                                )}
+                                                style={{ color: textColor || '#ffffff' }}
+                                                dangerouslySetInnerHTML={{ __html: (settings.subtitle || settings.body) || "" }}
+                                            />
+                                        )}
+                                        <div className={cn(
+                                            "flex flex-col sm:flex-row gap-4",
+                                            align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
+                                        )}>
                                             <Button size="lg" className={cn(
                                                 "h-14 px-8 rounded-full text-lg font-medium border-none shadow-xl transition-all",
                                                 settings.buttonStyle === 'secondary' ? "bg-white hover:bg-zinc-100 text-slate-900 border border-zinc-200" :
@@ -594,11 +644,21 @@ function SectionPreview({ section, sampleData, viewport = 'desktop' }: { section
 
                         case 'text':
                             return (
-                                <section style={{ backgroundColor: bgColor, paddingTop: paddingY ?? 32, paddingBottom: paddingY ?? 32, textAlign: align }}>
+                                <section style={{ backgroundColor: bgColor, paddingTop: paddingY ?? 32, paddingBottom: paddingY ?? 32, paddingLeft: paddingX ?? 0, paddingRight: paddingX ?? 0, textAlign: align }}>
                                     <div className="container-wide px-4">
-                                        <div className="max-w-4xl mx-auto">
+                                        <div className={cn(
+                                            "max-w-4xl",
+                                            align === 'left' ? 'mr-auto ml-0' : align === 'right' ? 'ml-auto mr-0' : 'mx-auto'
+                                        )}>
                                             {settings.title && <h2 className="text-3xl font-bold mb-6" style={{ color: textColor }}>{settings.title}</h2>}
-                                            <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: settings.body || "<p>Content goes here...</p>" }} style={{ color: textColor }} />
+                                            <div
+                                                className={cn(
+                                                    "prose prose-lg max-w-none",
+                                                    align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center'
+                                                )}
+                                                dangerouslySetInnerHTML={{ __html: settings.body || "<p>Content goes here...</p>" }}
+                                                style={{ color: textColor }}
+                                            />
                                         </div>
                                     </div>
                                 </section>
@@ -606,11 +666,13 @@ function SectionPreview({ section, sampleData, viewport = 'desktop' }: { section
 
                         case 'image':
                             return (
-                                <section style={{ backgroundColor: bgColor, paddingTop: paddingY ?? 32, paddingBottom: paddingY ?? 32, textAlign: align }}>
-                                    <div className={`container-wide px-4 ${settings.contentWidth === 'narrow' ? 'max-w-4xl mx-auto' : ''}`}>
+                                <section style={{ backgroundColor: bgColor, paddingTop: paddingY ?? 32, paddingBottom: paddingY ?? 32, paddingLeft: paddingX ?? 0, paddingRight: paddingX ?? 0, textAlign: align }}>
+                                    <div className={cn(
+                                        "container-wide px-4",
+                                        settings.contentWidth === 'narrow' ? 'max-w-4xl mx-auto' : ''
+                                    )}>
                                         <div className="relative w-full h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-2xl bg-slate-100">
                                             {settings.imageUrl ? (
-                                                // eslint-disable-next-line @next/next/no-img-element
                                                 <img
                                                     src={getSafeImageSrc(settings.imageUrl)}
                                                     alt={settings.altText || settings.title || "Image"}
@@ -624,244 +686,441 @@ function SectionPreview({ section, sampleData, viewport = 'desktop' }: { section
                                                 </div>
                                             )}
                                         </div>
-                                        {settings.caption && <p className="text-sm text-slate-500 mt-4 text-center italic">{settings.caption}</p>}
-                                    </div>
-                                </section>
-                            );
-
-                        case 'custom_content':
-                            return (
-                                <section style={{ backgroundColor: bgColor, paddingTop: paddingY ?? 32, paddingBottom: paddingY ?? 32, textAlign: align }}>
-                                    <div className="container-wide px-4">
-                                        <div className="max-w-4xl mx-auto" style={{ fontFamily: settings.fontFamily || 'inherit', fontSize: settings.fontSize ? `${settings.fontSize}px` : undefined }}>
-                                            {settings.title && <h2 className="text-3xl font-bold mb-6" style={{ color: textColor, fontFamily: settings.fontFamily || 'inherit' }}>{settings.title}</h2>}
-                                            <div className="prose prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: settings.body || '<p>Custom content goes here...</p>' }} style={{ color: textColor, fontFamily: settings.fontFamily || 'inherit', fontSize: settings.fontSize ? `${settings.fontSize}px` : undefined }} />
-                                        </div>
-                                    </div>
-                                </section>
-                            );
-
-                        case 'mission_vision':
-                            return (
-                                <section style={{ backgroundColor: bgColor || '#ffffff', paddingTop: paddingY ?? 48, paddingBottom: paddingY ?? 48 }}>
-                                    <div className="container-wide px-4">
-                                        {settings.title && (
-                                            <div className="text-center mb-10">
-                                                <h2 className="text-3xl font-bold" style={{ color: textColor || '#0F172A' }}>{settings.title}</h2>
-                                                {settings.subtitle && <p className="text-slate-500 mt-2 text-lg">{settings.subtitle}</p>}
-                                            </div>
+                                        {settings.caption && (
+                                            <p
+                                                className={cn(
+                                                    "text-sm text-slate-500 mt-4 italic",
+                                                    align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center mx-auto'
+                                                )}
+                                            >
+                                                {settings.caption}
+                                            </p>
                                         )}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {(settings.cards && settings.cards.length > 0 ? settings.cards : [
-                                                { icon: '🎯', title: 'Our Mission', description: 'StartupSaga.in was founded with a simple belief: every founder\'s journey deserves to be told.', color: '#FEF3E8' },
-                                                { icon: '🌐', title: 'Our Vision', description: 'To become India\'s most trusted platform for startup news, insights, and community.', color: '#EEF6FF' }
-                                            ]).map((card: any, i: number) => (
-                                                <div key={i} className="rounded-2xl p-6 border border-slate-100" style={{ backgroundColor: card.color || '#F8FAFC' }}>
-                                                    <div className="flex items-center gap-3 mb-4">
-                                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: 'rgba(255,255,255,0.8)' }}>
-                                                            {card.icon || '⭐'}
-                                                        </div>
-                                                        <h3 className="text-xl font-bold text-slate-900">{card.title || 'Section Title'}</h3>
-                                                    </div>
-                                                    <p className="text-slate-600 leading-relaxed">{card.description || 'Add a description for this card.'}</p>
-                                                </div>
-                                            ))}
-                                        </div>
                                     </div>
                                 </section>
                             );
 
-                        case 'stats_bar':
-                            return (
-                                <section style={{ backgroundColor: bgColor || '#ffffff', paddingTop: paddingY ?? 32, paddingBottom: paddingY ?? 32 }}>
-                                    <div className="container-wide px-4">
-                                        {settings.title && <h2 className="text-2xl font-bold text-center mb-8" style={{ color: textColor || '#0F172A' }}>{settings.title}</h2>}
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            {(settings.cards && settings.cards.length > 0 ? settings.cards : [
-                                                { stat_value: '5,000+', stat_label: 'Startups Covered' },
-                                                { stat_value: '10,000+', stat_label: 'Stories Published' },
-                                                { stat_value: '2M+', stat_label: 'Monthly Readers' },
-                                                { stat_value: '50+', stat_label: 'Cities Tracked' }
-                                            ]).map((card: any, i: number) => (
-                                                <div key={i} className="text-center p-6 rounded-2xl border border-slate-100 bg-white shadow-sm">
-                                                    <div className="text-3xl font-black text-orange-500 mb-1">{card.stat_value || '0'}</div>
-                                                    <div className="text-sm text-slate-500 font-medium">{card.stat_label || 'Stat Label'}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </section>
-                            );
+                            function SectionPreview({ section, viewport }: { section: any, viewport: string }) {
+                                if (!section) return null;
 
-                        case 'team_grid':
-                            return (
-                                <section style={{ backgroundColor: bgColor || '#ffffff', paddingTop: paddingY ?? 48, paddingBottom: paddingY ?? 48 }}>
-                                    <div className="container-wide px-4">
-                                        <div className="flex items-center gap-3 mb-10">
-                                            <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500"><User size={18} /></div>
-                                            <h2 className="text-2xl font-bold" style={{ color: textColor || '#0F172A' }}>{settings.title || 'Our Team'}</h2>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                            {(settings.cards && settings.cards.length > 0 ? settings.cards : [
-                                                { title: 'Team Member', role: 'Co-Founder', image: '' },
-                                                { title: 'Team Member', role: 'Editor', image: '' }
-                                            ]).map((card: any, i: number) => (
-                                                <div key={i} className="group text-center">
-                                                    <div className="w-24 h-24 mx-auto rounded-2xl mb-3 bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
-                                                        {card.image ? (
-                                                            <img src={card.image} alt={card.title} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <span className="text-2xl font-bold text-slate-400">{(card.title || 'T')[0]}</span>
-                                                        )}
-                                                    </div>
-                                                    <h4 className="font-bold text-slate-900">{card.title || 'Name'}</h4>
-                                                    <p className="text-sm text-orange-500 font-medium">{card.role || 'Role'}</p>
-                                                    {card.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{card.description}</p>}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </section>
-                            );
+                                const type = section.section_type || section.type;
+                                const settings = section.settings || {};
 
-                        case 'values_grid':
-                            return (
-                                <section style={{ backgroundColor: bgColor || '#ffffff', paddingTop: paddingY ?? 48, paddingBottom: paddingY ?? 48 }}>
-                                    <div className="container-wide px-4">
-                                        <div className="flex items-center gap-3 mb-10">
-                                            <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500">🏅</div>
-                                            <h2 className="text-2xl font-bold" style={{ color: textColor || '#0F172A' }}>{settings.title || 'Our Values'}</h2>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                                            {(settings.cards && settings.cards.length > 0 ? settings.cards : [
-                                                { title: 'Authenticity', description: 'We tell real stories with honesty and integrity, celebrating both successes and failures.' },
-                                                { title: 'Inclusivity', description: 'We believe entrepreneurship is for everyone, from metros to Tier-3 towns.' },
-                                                { title: 'Impact', description: 'Every story we tell aims to inspire action and drive positive change.' }
-                                            ]).map((card: any, i: number) => (
-                                                <div key={i} className="p-6 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
-                                                    <h3 className="font-bold text-slate-900 text-lg mb-2">{card.title || 'Value Name'}</h3>
-                                                    <p className="text-slate-500 text-sm leading-relaxed">{card.description || 'Describe this core value.'}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </section>
-                            );
+                                // ─── HELPER FOR SECTION STYLES (MATCHES FRONTEND) ───
+                                const getBaseStyles = (s: any, fallbackPY = 80) => {
+                                    const bg = st.backgroundColor || (s.type === 'hero' ? 'transparent' : (st.backgroundColor || '#ffffff'));
 
-                        case 'policy_section':
-                            return (
-                                <section style={{ backgroundColor: bgColor || '#ffffff', paddingTop: paddingY ?? 48, paddingBottom: paddingY ?? 48 }}>
-                                    <div className="container-wide px-4 max-w-4xl mx-auto">
-                                        {settings.title && <h2 className="text-2xl font-bold mb-6 pb-3 border-b border-slate-200" style={{ color: textColor || '#0F172A' }}>{settings.title}</h2>}
-                                        <div className="prose prose-slate max-w-none text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: settings.body || '<p>Policy content goes here...</p>' }} />
-                                    </div>
-                                </section>
-                            );
+                                    return {
+                                        backgroundColor: bg,
+                                        paddingTop: st.paddingY !== undefined && st.paddingY !== null ? st.paddingY : fallbackPY,
+                                        paddingBottom: st.paddingY !== undefined && st.paddingY !== null ? st.paddingY : fallbackPY,
+                                        paddingLeft: st.paddingX !== undefined && st.paddingX !== null ? st.paddingX : undefined,
+                                        paddingRight: st.paddingX !== undefined && st.paddingX !== null ? st.paddingX : undefined,
+                                        marginTop: st.marginTop !== undefined ? st.marginTop : undefined,
+                                        marginBottom: st.marginBottom !== undefined ? st.marginBottom : undefined,
+                                        marginLeft: st.marginLeft !== undefined ? st.marginLeft : undefined,
+                                        marginRight: st.marginRight !== undefined ? st.marginRight : undefined,
+                                        textAlign: (st.align || 'left') as any,
+                                        fontFamily: st.fontFamily && st.fontFamily !== 'inherit' ? st.fontFamily : 'inherit',
+                                        fontSize: st.fontSize ? `${st.fontSize}px` : undefined,
+                                        color: st.textColor || undefined,
+                                    };
+                                };
 
-                        case 'faq':
-                            return (
-                                <section style={{ backgroundColor: bgColor || '#f8fafc', paddingTop: paddingY ?? 48, paddingBottom: paddingY ?? 48 }}>
-                                    <div className="container-wide px-4 max-w-3xl mx-auto">
-                                        {settings.title && <h2 className="text-2xl font-bold mb-8 text-center" style={{ color: textColor || '#0F172A' }}>{settings.title}</h2>}
-                                        <div className="space-y-3">
-                                            {(settings.cards && settings.cards.length > 0 ? settings.cards : [
-                                                { question: 'What information do we collect?', answer: 'We collect information you provide directly.' },
-                                                { question: 'How is your data used?', answer: 'To provide and improve our services.' }
-                                            ]).map((card: any, i: number) => (
-                                                <div key={i} className="p-5 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                                    <p className="font-bold text-slate-900 mb-2">{card.question || card.title}</p>
-                                                    <p className="text-slate-500 text-sm leading-relaxed">{card.answer || card.description}</p>
-                                                </div>
-                                            ))}
+                                const sectionStyles = getBaseStyles(section);
+                                const titleStyle = {
+                                    color: sectionStyles.color,
+                                    fontFamily: sectionStyles.fontFamily,
+                                    textAlign: sectionStyles.textAlign
+                                };
+                                const align = settings.align || 'left';
+
+                                return (
+                                    <div className={cn(
+                                        "border border-dashed border-slate-200 rounded-lg overflow-hidden my-4 transition-all bg-white relative",
+                                        viewport === 'mobile' ? 'max-w-[375px] mx-auto' : viewport === 'tablet' ? 'max-w-[768px] mx-auto' : 'w-full'
+                                    )}>
+                                        <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Badge variant="outline" className="bg-white/80 backdrop-blur-sm text-[10px] uppercase tracking-wider">{type}</Badge>
+                                        </div>
+
+                                        <div className="preview-content scale-[0.9] origin-top transform-gpu -mb-[10%] min-h-[100px]">
+                                            {(() => {
+                                                switch (type) {
+                                                    case 'hero':
+                                                        return (
+                                                            <section style={sectionStyles} className="relative overflow-hidden">
+                                                                <div className="px-6 relative z-10 py-6">
+                                                                    <h1
+                                                                        className={cn(
+                                                                            "text-3xl md:text-4xl lg:text-5xl font-black mb-4 leading-tight tracking-tight",
+                                                                            align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center mx-auto max-w-2xl'
+                                                                        )}
+                                                                        style={titleStyle}
+                                                                    >
+                                                                        {settings.title || 'Welcome to StartupSaga'}
+                                                                    </h1>
+                                                                    <p
+                                                                        className={cn(
+                                                                            "text-base md:text-lg mb-8 opacity-90 leading-relaxed",
+                                                                            align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center mx-auto max-w-xl'
+                                                                        )}
+                                                                        style={{ color: sectionStyles.color, fontFamily: sectionStyles.fontFamily }}
+                                                                    >
+                                                                        {settings.body || 'Empowering Indian entrepreneurs with stories that inspire and insights that matter.'}
+                                                                    </p>
+                                                                    <div className={cn(
+                                                                        "flex flex-wrap gap-4",
+                                                                        align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
+                                                                    )}>
+                                                                        <Button className="bg-orange-600 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-orange-600/20">{settings.buttonText || 'Explore Stories'}</Button>
+                                                                        {settings.secondaryButtonText && <Button variant="outline" className="h-12 px-8 rounded-xl">{settings.secondaryButtonText}</Button>}
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'text':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6">
+                                                                    {settings.title && <h2 className="text-3xl font-bold mb-4" style={titleStyle}>{settings.title}</h2>}
+                                                                    <div
+                                                                        className={cn(
+                                                                            "prose prose-slate max-w-none",
+                                                                            align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center'
+                                                                        )}
+                                                                        dangerouslySetInnerHTML={{ __html: settings.body || '<p>Add your text content here...</p>' }}
+                                                                        style={{ color: sectionStyles.color, fontFamily: sectionStyles.fontFamily, fontSize: sectionStyles.fontSize }}
+                                                                    />
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'image':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6">
+                                                                    <div className="relative aspect-video rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 group flex items-center justify-center">
+                                                                        {settings.imageUrl ? (
+                                                                            <img src={settings.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                                                        ) : (
+                                                                            <div className="text-slate-400 text-center">
+                                                                                <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                                                                                <p className="text-sm font-medium">No image selected</p>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    {settings.caption && (
+                                                                        <p
+                                                                            className={cn(
+                                                                                "text-sm text-slate-500 mt-4 italic",
+                                                                                align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center mx-auto'
+                                                                            )}
+                                                                            style={{ color: sectionStyles.color, fontFamily: sectionStyles.fontFamily }}
+                                                                        >
+                                                                            {settings.caption}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'custom_content':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6">
+                                                                    <div
+                                                                        className={cn(
+                                                                            "max-w-4xl",
+                                                                            align === 'left' ? 'mr-auto ml-0' : align === 'right' ? 'ml-auto mr-0' : 'mx-auto'
+                                                                        )}
+                                                                    >
+                                                                        {settings.title && <h2 className="text-3xl font-bold mb-6" style={titleStyle}>{settings.title}</h2>}
+                                                                        <div
+                                                                            className={cn(
+                                                                                "prose prose-lg max-w-none",
+                                                                                align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center'
+                                                                            )}
+                                                                            dangerouslySetInnerHTML={{ __html: settings.body || '<p>Custom content goes here...</p>' }}
+                                                                            style={{ color: sectionStyles.color, fontFamily: sectionStyles.fontFamily, fontSize: sectionStyles.fontSize }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'mission_vision':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6">
+                                                                    {settings.title && (
+                                                                        <div className={cn(
+                                                                            "mb-10",
+                                                                            align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center'
+                                                                        )}>
+                                                                            <h2 className="text-3xl font-bold" style={titleStyle}>{settings.title}</h2>
+                                                                            {settings.subtitle && <p className="text-slate-500 mt-2 text-lg">{settings.subtitle}</p>}
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                        {(settings.cards && settings.cards.length > 0 ? settings.cards : [
+                                                                            { icon: '🎯', title: 'Our Mission', description: 'StartupSaga.in was founded with a simple belief: every founder\'s journey deserves to be told.', color: '#FEF3E8' },
+                                                                            { icon: '🌐', title: 'Our Vision', description: 'To become India\'s most trusted platform for startup news, insights, and community.', color: '#EEF6FF' }
+                                                                        ]).map((card: any, i: number) => (
+                                                                            <div key={i} className="rounded-2xl p-6 border border-slate-100" style={{ backgroundColor: card.color || '#F8FAFC' }}>
+                                                                                <div className="flex items-center gap-3 mb-4">
+                                                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: 'rgba(255,255,255,0.8)' }}>
+                                                                                        {card.icon || '⭐'}
+                                                                                    </div>
+                                                                                    <h3 className="text-xl font-bold text-slate-900">{card.title || 'Section Title'}</h3>
+                                                                                </div>
+                                                                                <p className="text-slate-600 leading-relaxed">{card.description || 'Add a description for this card.'}</p>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'stats_bar':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6">
+                                                                    {settings.title && (
+                                                                        <h2 className="text-2xl font-bold mb-8" style={titleStyle}>
+                                                                            {settings.title}
+                                                                        </h2>
+                                                                    )}
+                                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                                        {(settings.cards && settings.cards.length > 0 ? settings.cards : [
+                                                                            { stat_value: '5,000+', stat_label: 'Startups Covered' },
+                                                                            { stat_value: '10,000+', stat_label: 'Stories Published' },
+                                                                            { stat_value: '2M+', stat_label: 'Monthly Readers' },
+                                                                            { stat_value: '50+', stat_label: 'Cities Tracked' }
+                                                                        ]).map((card: any, i: number) => (
+                                                                            <div key={i} className="text-center p-6 rounded-2xl border border-slate-100 bg-white shadow-sm">
+                                                                                <div className="text-3xl font-black text-orange-500 mb-1">{card.stat_value || '0'}</div>
+                                                                                <div className="text-sm text-slate-500 font-medium">{card.stat_label || 'Stat Label'}</div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'team_grid':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6">
+                                                                    <div className={cn("flex items-center gap-3 mb-10", align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center')}>
+                                                                        <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500"><User size={18} /></div>
+                                                                        <h2 className="text-2xl font-bold" style={titleStyle}>{settings.title || 'Our Team'}</h2>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                                                        {(settings.cards && settings.cards.length > 0 ? settings.cards : [
+                                                                            { title: 'Team Member', role: 'Co-Founder', image: '' },
+                                                                            { title: 'Team Member', role: 'Editor', image: '' }
+                                                                        ]).map((card: any, i: number) => (
+                                                                            <div key={i} className="group text-center">
+                                                                                <div className="w-24 h-24 mx-auto rounded-2xl mb-3 bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                                                                                    {card.image ? (
+                                                                                        <img src={card.image} alt={card.title} className="w-full h-full object-cover" />
+                                                                                    ) : (
+                                                                                        <span className="text-2xl font-bold text-slate-400">{(card.title || 'T')[0]}</span>
+                                                                                    )}
+                                                                                </div>
+                                                                                <h4 className="font-bold text-slate-900">{card.title || 'Name'}</h4>
+                                                                                <p className="text-sm text-orange-500 font-medium">{card.role || 'Role'}</p>
+                                                                                {card.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{card.description}</p>}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'values_grid':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6">
+                                                                    <div className={cn("flex items-center gap-3 mb-10", align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center')}>
+                                                                        <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500">🏅</div>
+                                                                        <h2 className="text-2xl font-bold" style={titleStyle}>{settings.title || 'Our Values'}</h2>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                                                                        {(settings.cards && settings.cards.length > 0 ? settings.cards : [
+                                                                            { title: 'Authenticity', description: 'We tell real stories with honesty and integrity, celebrating both successes and failures.' },
+                                                                            { title: 'Inclusivity', description: 'We believe entrepreneurship is for everyone, from metros to Tier-3 towns.' },
+                                                                            { title: 'Impact', description: 'Every story we tell aims to inspire action and drive positive change.' }
+                                                                        ]).map((card: any, i: number) => (
+                                                                            <div key={i} className="p-6 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+                                                                                <h3 className="font-bold text-slate-900 text-lg mb-2">{card.title || 'Value Name'}</h3>
+                                                                                <p className="text-slate-500 text-sm leading-relaxed">{card.description || 'Describe this core value.'}</p>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'policy_section':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6 max-w-4xl mx-auto">
+                                                                    {settings.title && <h2 className="text-2xl font-bold mb-6 pb-3 border-b border-slate-200" style={titleStyle}>{settings.title}</h2>}
+                                                                    <div className="prose prose-slate max-w-none text-sm leading-relaxed"
+                                                                        dangerouslySetInnerHTML={{ __html: settings.body || '<p>Policy content goes here...</p>' }}
+                                                                        style={{ color: sectionStyles.color, fontFamily: sectionStyles.fontFamily, fontSize: sectionStyles.fontSize }}
+                                                                    />
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'faq':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6 max-w-3xl mx-auto">
+                                                                    {settings.title && (
+                                                                        <h2 className="text-2xl font-bold mb-8 text-center" style={titleStyle}>
+                                                                            {settings.title}
+                                                                        </h2>
+                                                                    )}
+                                                                    <div className="space-y-3">
+                                                                        {(settings.cards && settings.cards.length > 0 ? settings.cards : [
+                                                                            { question: 'What information do we collect?', answer: 'We collect information you provide directly.' },
+                                                                            { question: 'How is your data used?', answer: 'To provide and improve our services.' }
+                                                                        ]).map((card: any, i: number) => (
+                                                                            <div key={i} className="p-5 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                                                                <p className="font-bold text-slate-900 mb-2">{card.question || card.title}</p>
+                                                                                <p className="text-slate-500 text-sm leading-relaxed">{card.answer || card.description}</p>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'callout':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6">
+                                                                    <div className="flex items-start gap-4 p-5 rounded-xl" style={{ backgroundColor: settings.backgroundColor || '#FEF3E8', border: `1px solid ${settings.textColor || '#F97316'}30` }}>
+                                                                        <span className="text-2xl mt-0.5">{settings.icon || '⚠️'}</span>
+                                                                        <div>
+                                                                            {settings.title && <p className="font-bold mb-1" style={{ color: settings.textColor || '#9A3412' }}>{settings.title}</p>}
+                                                                            <p className="text-sm leading-relaxed" style={{ color: settings.textColor || '#9A3412' }}>{settings.body || 'This is an important notice.'}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'related_cards':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6">
+                                                                    {settings.title && <h2 className="text-2xl font-bold mb-8" style={titleStyle}>{settings.title}</h2>}
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                                                        {(settings.cards && settings.cards.length > 0 ? settings.cards : [
+                                                                            { title: 'Privacy Policy', description: 'How we handle your data.', link: '/privacy-policy', icon: '🔒' },
+                                                                            { title: 'Cookie Policy', description: 'How we use cookies.', link: '/cookie-policy', icon: '🍪' }
+                                                                        ]).map((card: any, i: number) => (
+                                                                            <div key={i} className="flex items-start gap-3 p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-orange-300 hover:shadow-md transition-all group no-underline">
+                                                                                <span className="text-2xl">{card.icon || '📄'}</span>
+                                                                                <div>
+                                                                                    <p className="font-bold text-slate-900 text-sm group-hover:text-orange-600 transition-colors">{card.title}</p>
+                                                                                    <p className="text-slate-500 text-xs mt-0.5">{card.description}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'image_gallery':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6">
+                                                                    {settings.title && <h2 className="text-2xl font-bold mb-8" style={titleStyle}>{settings.title}</h2>}
+                                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                                        {(settings.cards && settings.cards.length > 0 ? settings.cards : [
+                                                                            { image: '', title: 'Image 1' }, { image: '', title: 'Image 2' }, { image: '', title: 'Image 3' }
+                                                                        ]).map((card: any, i: number) => (
+                                                                            <div key={i} className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                                                                                {card.image ? (
+                                                                                    <img src={card.image} alt={card.title} className="w-full h-full object-cover" />
+                                                                                ) : (
+                                                                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                                                                                        <span className="text-3xl mb-1">🖼️</span>
+                                                                                        <span className="text-xs">{card.title || 'No image'}</span>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'newsletter':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6 text-center">
+                                                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange-50 mb-6">
+                                                                        <Mail className="h-8 w-8 text-orange-600" />
+                                                                    </div>
+                                                                    <h2 className="text-3xl md:text-4xl font-bold mb-4" style={titleStyle}>
+                                                                        {settings.title || "Stay Updated with Startup Stories"}
+                                                                    </h2>
+                                                                    <p className="text-slate-500 text-lg mb-8 max-w-xl mx-auto" style={{ fontFamily: sectionStyles.fontFamily }}>
+                                                                        {settings.body || "Get the latest startup stories, founder insights, and ecosystem updates delivered to your inbox every week."}
+                                                                    </p>
+                                                                    <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                                                                        <div className="flex-1 h-12 bg-white border border-slate-200 rounded-lg flex items-center px-4 text-slate-400 text-sm">
+                                                                            Enter your email
+                                                                        </div>
+                                                                        <Button type="button" className="bg-orange-600 text-white h-12 px-6 rounded-lg font-bold gap-2">
+                                                                            {settings.buttonText || "Subscribe"}
+                                                                            <ArrowRight className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    case 'table_of_contents':
+                                                        return (
+                                                            <section style={sectionStyles}>
+                                                                <div className="px-6 max-w-2xl">
+                                                                    <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                                                        {settings.title && <p className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wider">{settings.title}</p>}
+                                                                        <ol className="space-y-2">
+                                                                            {(settings.cards && settings.cards.length > 0 ? settings.cards : [
+                                                                                { title: 'Introduction', link: '#intro' },
+                                                                                { title: 'Your Rights', link: '#rights' }
+                                                                            ]).map((card: any, i: number) => (
+                                                                                <li key={i} className="flex items-center gap-2 text-sm">
+                                                                                    <span className="text-orange-500 font-bold font-mono">{String(i + 1).padStart(2, '0')}</span>
+                                                                                    <div className="text-slate-700">{card.title}</div>
+                                                                                </li>
+                                                                            ))}
+                                                                        </ol>
+                                                                    </div>
+                                                                </div>
+                                                            </section>
+                                                        );
+
+                                                    default:
+                                                        return <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-lg">Preview not available for {type}</div>;
+                                                }
+                                            })()}
                                         </div>
                                     </div>
-                                </section>
-                            );
+                                );
+                            }
 
-                        case 'callout':
-                            return (
-                                <section style={{ backgroundColor: bgColor || '#FEF3E8', paddingTop: paddingY ?? 24, paddingBottom: paddingY ?? 24 }}>
-                                    <div className="container-wide px-4">
-                                        <div className="flex items-start gap-4 p-5 rounded-xl" style={{ backgroundColor: bgColor || '#FEF3E8', border: `1px solid ${textColor || '#F97316'}30` }}>
-                                            <span className="text-2xl mt-0.5">{settings.icon || '⚠️'}</span>
-                                            <div>
-                                                {settings.title && <p className="font-bold mb-1" style={{ color: textColor || '#9A3412' }}>{settings.title}</p>}
-                                                <p className="text-sm leading-relaxed" style={{ color: textColor || '#9A3412' }}>{settings.body || 'This is an important notice.'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </section>
-                            );
-
-                        case 'related_cards':
-                            return (
-                                <section style={{ backgroundColor: bgColor || '#f8fafc', paddingTop: paddingY ?? 48, paddingBottom: paddingY ?? 48 }}>
-                                    <div className="container-wide px-4">
-                                        {settings.title && <h2 className="text-2xl font-bold mb-8" style={{ color: textColor || '#0F172A' }}>{settings.title}</h2>}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                            {(settings.cards && settings.cards.length > 0 ? settings.cards : [
-                                                { title: 'Privacy Policy', description: 'How we handle your data.', link: '/privacy-policy', icon: '🔒' },
-                                                { title: 'Cookie Policy', description: 'How we use cookies.', link: '/cookie-policy', icon: '🍪' }
-                                            ]).map((card: any, i: number) => (
-                                                <a key={i} href={card.link || '#'} className="flex items-start gap-3 p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-orange-300 hover:shadow-md transition-all group no-underline">
-                                                    <span className="text-2xl">{card.icon || '📄'}</span>
-                                                    <div>
-                                                        <p className="font-bold text-slate-900 text-sm group-hover:text-orange-600 transition-colors">{card.title}</p>
-                                                        <p className="text-slate-500 text-xs mt-0.5">{card.description}</p>
-                                                    </div>
-                                                </a>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </section>
-                            );
-
-                        case 'image_gallery':
-                            return (
-                                <section style={{ backgroundColor: bgColor || '#ffffff', paddingTop: paddingY ?? 40, paddingBottom: paddingY ?? 40 }}>
-                                    <div className="container-wide px-4">
-                                        {settings.title && <h2 className="text-2xl font-bold mb-8" style={{ color: textColor || '#0F172A' }}>{settings.title}</h2>}
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                            {(settings.cards && settings.cards.length > 0 ? settings.cards : [
-                                                { image: '', title: 'Image 1' }, { image: '', title: 'Image 2' }, { image: '', title: 'Image 3' }
-                                            ]).map((card: any, i: number) => (
-                                                <div key={i} className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
-                                                    {card.image ? (
-                                                        <img src={card.image} alt={card.title} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                                                            <span className="text-3xl mb-1">🖼️</span>
-                                                            <span className="text-xs">{card.title || 'No image'}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </section>
-                            );
-
-                        case 'table_of_contents':
-                            return (
-                                <section style={{ backgroundColor: bgColor || '#f8fafc', paddingTop: paddingY ?? 24, paddingBottom: paddingY ?? 24 }}>
-                                    <div className="container-wide px-4 max-w-2xl">
-                                        <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                            {settings.title && <p className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wider">{settings.title}</p>}
-                                            <ol className="space-y-2">
-                                                {(settings.cards && settings.cards.length > 0 ? settings.cards : [
-                                                    { title: 'Introduction', link: '#intro' },
-                                                    { title: 'Your Rights', link: '#rights' }
-                                                ]).map((card: any, i: number) => (
-                                                    <li key={i} className="flex items-center gap-2 text-sm">
-                                                        <span className="text-orange-500 font-bold font-mono">{String(i + 1).padStart(2, '0')}</span>
-                                                        <a href={card.link || '#'} className="text-slate-700 hover:text-orange-600 transition-colors">{card.title}</a>
-                                                    </li>
-                                                ))}
-                                            </ol>
-                                        </div>
-                                    </div>
-                                </section>
-                            );
 
                         default:
                             return <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-lg">Preview not available for {type}</div>;
@@ -1207,21 +1466,21 @@ Response Format (JSON ONLY, no markdown):
 
     const addSection = (type: SectionType) => {
         const baseSettings: Record<SectionType, SectionSettings> = {
-            hero: { title: "New Hero Section", subtitle: "Highlight your key message.", buttonText: "Get Started", align: "center", backgroundColor: "#f8fafc", titleSize: 48, contentWidth: "wide", paddingY: 80, paddingX: 0 },
+            hero: { title: "New Hero Section", subtitle: "", buttonText: "Get Started", align: "left", backgroundColor: "transparent", titleSize: 48, contentWidth: "wide", paddingY: 32, paddingX: 0 },
             text: { title: "Content Section", body: "Write your story here...", align: "left", backgroundColor: "#ffffff", titleSize: 32, contentWidth: "normal" },
             image: { caption: "Featured image caption", align: "center", backgroundColor: "#ffffff", contentWidth: "wide" },
             video: { caption: "Video documentation", align: "center", backgroundColor: "#0f172a", textColor: "#ffffff", contentWidth: "wide" },
-            banner: { title: "Promotional Banner", subtitle: "LIMITED TIME", buttonText: "Explore Now", backgroundColor: "#FF5722", textColor: "#FFFFFF" },
-            featured_stories: { title: "Featured Stories", subtitle: "Curated chronicles of success" },
-            latest_stories: { title: "Latest Stories", subtitle: "Fresh insights from the ecosystem" },
-            featured_startups: { title: "Featured Startups", subtitle: "Innovators making waves" },
-            startup_cards: { title: "Startup Directory", subtitle: "Browse the complete list" },
-            category_grid: { title: "Browse by Category", subtitle: "Find startups by industry" },
-            city_grid: { title: "Startup Hubs", subtitle: "Explore innovation across cities" },
-            rising_hubs: { title: "Rising Startup Hubs", subtitle: "Tier 2 & Tier 3 cities driving India's startup growth" },
+            banner: { title: "Promotional Banner", subtitle: "", buttonText: "Explore Now", backgroundColor: "#FF5722", textColor: "#FFFFFF" },
+            featured_stories: { title: "Featured Stories", subtitle: "" },
+            latest_stories: { title: "Latest Stories", subtitle: "" },
+            featured_startups: { title: "Featured Startups", subtitle: "" },
+            startup_cards: { title: "Startup Directory", subtitle: "" },
+            category_grid: { title: "Browse by Category", subtitle: "" },
+            city_grid: { title: "Startup Hubs", subtitle: "" },
+            rising_hubs: { title: "Rising Startup Hubs", subtitle: "" },
             newsletter: { title: "Stay Updated", body: "Get the latest startup stories delivered to your inbox.", buttonText: "Subscribe Now" },
             cta: { title: "Ready to launch?", body: "Submit your startup today and get featured.", buttonText: "Submit Startup", buttonLink: "/submit" },
-            trending_stories: { title: "Trending Stories", subtitle: "Most popular reads" },
+            trending_stories: { title: "Trending Stories", subtitle: "" },
             custom_content: { title: "Custom Content", body: "<p>Add your custom content here...</p>", align: "left", backgroundColor: "#ffffff", contentWidth: "normal" },
             mission_vision: {
                 title: "Our Mission & Vision",
@@ -1698,7 +1957,7 @@ Response Format (JSON ONLY, no markdown):
                                                         </button>
                                                     ))}
                                                     <div className="px-3 py-1.5 text-[10px] font-black uppercase text-slate-400 tracking-wider mt-2">Dynamic Feeds</div>
-                                                    {["latest_stories", "featured_startups", "startup_cards", "category_grid", "city_grid", "rising_hubs"].map((type: string) => (
+                                                    {["latest_stories", "featured_startups", "startup_cards", "category_grid", "city_grid", "rising_hubs", "newsletter"].map((type: string) => (
                                                         <button key={type} type="button" onClick={() => { addSection(type as SectionType); setAddSectionOpen(false); }} className="text-left px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-md capitalize flex items-center justify-between group/btn">
                                                             {type.replace(/_/g, " ")}
                                                             <Plus size={12} className="opacity-0 group-hover/btn:opacity-100 text-blue-500" />

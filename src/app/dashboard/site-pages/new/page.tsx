@@ -101,13 +101,13 @@ function TabButton({ id, label, active, onClick, icon: Icon }: any) {
             type="button"
             onClick={() => onClick(id)}
             className={cn(
-                "px-4 py-3 text-sm font-medium border-b-2 transition-all flex items-center gap-2 whitespace-nowrap min-w-fit",
+                "px-5 py-3 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 whitespace-nowrap min-w-fit",
                 isActive
-                    ? "border-blue-600 text-blue-600 bg-blue-50/10"
-                    : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                    ? "border-purple-600 text-purple-600 bg-purple-50/30"
+                    : "border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50/50"
             )}
         >
-            {Icon && <Icon size={14} className={cn(isActive ? "text-blue-500" : "text-slate-400")} />}
+            {Icon && <Icon size={14} className={cn(isActive ? "text-purple-600" : "text-slate-400")} />}
             {label}
         </button>
     );
@@ -266,29 +266,38 @@ export default function NewPage() {
     const activeSection = sections.find(s => s.id === activeTab);
 
     return (
-        <div className="min-h-screen bg-slate-50/50 p-4 pb-20">
-            <div className="max-w-7xl mx-auto space-y-4">
+        <div className="min-h-screen bg-white text-zinc-900 font-sans pb-10">
+            <div className="max-w-[1400px] mx-auto p-4 lg:p-8 space-y-8 flex flex-col min-h-[85vh]">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Button variant="ghost" size="icon" className="h-9 w-9 bg-white border border-slate-200 shadow-sm" asChild>
-                            <Link href="/dashboard/site-pages"><ArrowLeft size={16} /></Link>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-zinc-50 border border-zinc-100 shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" size="icon" className="h-9 w-9 bg-white border border-zinc-200 shadow-sm rounded-xl hover:bg-zinc-100" asChild>
+                            <Link href="/dashboard/site-pages"><ArrowLeft size={16} className="text-zinc-600" /></Link>
                         </Button>
-                        <div>
-                            <h1 className="text-xl font-bold text-slate-900">Create New Page</h1>
-                            <p className="text-xs text-slate-500">Design your page with sections and SEO settings.</p>
+                        <div className="flex items-center gap-4">
+                            <div className="h-11 w-11 rounded-xl bg-purple-600 flex items-center justify-center shadow-md shadow-purple-200">
+                                <Plus className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Website</p>
+                                <h1 className="text-xl font-bold tracking-tight text-zinc-900">Create New Page</h1>
+                            </div>
                         </div>
                     </div>
-                    <Button onClick={handleSubmit} disabled={isLoading} className="gap-2 h-9 px-6 font-bold shadow-lg shadow-blue-500/20">
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                        className="h-10 px-6 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all active:scale-95 shadow-sm shadow-purple-200 gap-2"
+                    >
                         {isLoading ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                         Publish Page
                     </Button>
                 </div>
 
                 {/* Main Editor UI */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[600px] flex flex-col">
+                <div className="bg-white rounded-3xl shadow-sm border border-zinc-100 overflow-hidden min-h-[600px] flex flex-col">
                     {/* Tabs */}
-                    <div className="border-b px-2 flex items-center gap-1 overflow-x-auto bg-white pt-1 no-scrollbar">
+                    <div className="border-b border-zinc-100 flex items-center gap-1 overflow-x-auto bg-zinc-50/50 no-scrollbar">
                         <TabButton id="general" label="Basic Info" active={activeTab} onClick={setActiveTab} icon={Type} />
                         <TabButton id="structure" label="Visual Layout" active={activeTab} onClick={setActiveTab} icon={Layout} />
 
@@ -320,7 +329,7 @@ export default function NewPage() {
                                                 value={formData.title}
                                                 onChange={e => setFormData({ ...formData, title: e.target.value })}
                                                 placeholder="e.g. Our Success Story"
-                                                className="h-12 text-base font-medium rounded-xl border-slate-200 focus:ring-blue-500/20"
+                                                className="h-12 text-base font-medium rounded-xl border-zinc-200 focus:ring-purple-500/20"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -343,11 +352,11 @@ export default function NewPage() {
                                         />
                                     </div>
 
-                                    <div className="p-6 bg-blue-50/50 border border-blue-100/50 rounded-2xl flex items-start gap-4">
-                                        <Sparkles className="text-blue-500 shrink-0" size={20} />
+                                    <div className="p-6 bg-purple-50/50 border border-purple-100/50 rounded-2xl flex items-start gap-4">
+                                        <Sparkles className="text-purple-500 shrink-0" size={20} />
                                         <div>
-                                            <h4 className="text-sm font-bold text-blue-900">Want a richer layout?</h4>
-                                            <p className="text-xs text-blue-700/70 leading-relaxed">Go to the <strong>Visual Layout</strong> tab to build your page using modular sections like Heros, Story Grids, and CTAs.</p>
+                                            <h4 className="text-sm font-bold text-purple-900">Want a richer layout?</h4>
+                                            <p className="text-xs text-purple-700/70 leading-relaxed">Go to the <strong>Visual Layout</strong> tab to build your page using modular sections like Heros, Story Grids, and CTAs.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -367,7 +376,7 @@ export default function NewPage() {
                                         <Button
                                             type="button"
                                             onClick={() => setAddSectionOpen(!addSectionOpen)}
-                                            className="h-10 px-5 rounded-full font-bold gap-2"
+                                            className="h-10 px-5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm shadow-purple-100 gap-2"
                                         >
                                             <Plus size={16} /> Add Section
                                         </Button>
@@ -428,14 +437,14 @@ export default function NewPage() {
                                             </div>
                                             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setActiveTab(s.id)}>
                                                 <div className="flex items-center gap-2 mb-0.5">
-                                                    <Badge className="text-[9px] uppercase tracking-widest px-1.5 h-4 bg-slate-100 text-slate-500 border-0">{s.type.replace(/_/g, " ")}</Badge>
+                                                    <Badge className="text-[9px] uppercase tracking-widest px-1.5 h-4 bg-zinc-100 text-zinc-500 border-0">{s.type.replace(/_/g, " ")}</Badge>
                                                 </div>
                                                 <h3 className="font-bold text-sm text-slate-800">{s.settings.title || "Untitled Section"}</h3>
                                             </div>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => moveSection(s.id, 'up')} disabled={idx === 0}><ChevronUp size={14} /></Button>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => moveSection(s.id, 'down')} disabled={idx === sections.length - 1}><ChevronDown size={14} /></Button>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600" onClick={() => deleteSection(s.id)}><Trash2 size={14} /></Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-400 hover:text-purple-600 hover:bg-purple-50" onClick={() => moveSection(s.id, 'up')} disabled={idx === 0}><ChevronUp size={14} /></Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-400 hover:text-purple-600 hover:bg-purple-50" onClick={() => moveSection(s.id, 'down')} disabled={idx === sections.length - 1}><ChevronDown size={14} /></Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-400 hover:text-rose-600 hover:bg-rose-50" onClick={() => deleteSection(s.id)}><Trash2 size={14} /></Button>
                                             </div>
                                         </div>
                                     ))}
@@ -456,7 +465,7 @@ export default function NewPage() {
                             <div className="max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="flex items-center justify-between border-b pb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                                        <div className="h-8 w-8 bg-purple-600 rounded-lg flex items-center justify-center text-white">
                                             {(() => {
                                                 const Icon = ICON_MAP[activeSection.type] || Layout;
                                                 return <Icon size={16} />;
@@ -559,7 +568,7 @@ export default function NewPage() {
 
                                                             updateSection(activeSection.id, { cards: [...existing, newCard] });
                                                         }}
-                                                        className="h-7 text-[10px] font-bold uppercase text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3"
+                                                        className="h-7 text-[10px] font-bold uppercase text-purple-600 hover:text-purple-700 hover:bg-purple-50 px-3"
                                                     >
                                                         <Plus size={12} className="mr-1" /> Add Card
                                                     </Button>
@@ -669,7 +678,7 @@ export default function NewPage() {
                                                                 step={1}
                                                                 value={activeSection.settings.fontSize ?? 16}
                                                                 onChange={e => updateSection(activeSection.id, { fontSize: Number(e.target.value) })}
-                                                                className="w-full h-1.5 accent-indigo-600 cursor-pointer"
+                                                                className="w-full h-1.5 accent-purple-600 cursor-pointer"
                                                             />
                                                         </div>
                                                         <div className="space-y-1.5">

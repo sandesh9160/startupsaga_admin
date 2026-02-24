@@ -36,7 +36,8 @@ import {
     Calendar,
     Lightbulb,
     Trash2,
-    MoreHorizontal
+    MoreHorizontal,
+    LayoutGrid
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -60,6 +61,34 @@ import { getSafeImageSrc } from "@/lib/images";
 import { generateContent } from "@/lib/api";
 import { getPromptTemplate, fillTemplate } from "@/lib/prompt-manager";
 
+const BUSINESS_MODELS = [
+    { value: "b2b", label: "B2B" },
+    { value: "b2c", label: "B2C" },
+    { value: "b2b2c", label: "B2B2C" },
+    { value: "d2c", label: "D2C" },
+    { value: "saas", label: "SaaS" },
+    { value: "marketplace", label: "Marketplace" },
+    { value: "subscription", label: "Subscription" },
+    { value: "freemium", label: "Freemium" },
+    { value: "platform", label: "Platform" },
+    { value: "other", label: "Other" },
+];
+
+const STAGES = [
+    "Bootstrapped", "Pre-Seed", "Seed", "Series A",
+    "Series B", "Series C+", "IPO", "Unicorn"
+];
+
+const SECTORS = [
+    "B2B SaaS", "B2C Consumer App", "Marketplace", "Fintech",
+    "Healthtech", "Edtech", "E-commerce/D2C", "Logistics/Supply Chain",
+    "Deeptech/AI", "Agritech", "Clean Energy/Sustainability",
+    "Gaming/Entertainment", "Hardware/Robotics", "Proptech", "Web3/Crypto",
+    "Foodtech", "Mediatech", "Legaltech", "HRtech", "Insurtech"
+];
+
+const TEAM_SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
+
 export default function StartupEditPage() {
     const router = useRouter();
     const params = useParams();
@@ -71,6 +100,7 @@ export default function StartupEditPage() {
     const [cities, setCities] = useState<any[]>([]);
     const [mediaItems, setMediaItems] = useState<any[]>([]);
     const [formData, setFormData] = useState<any>({});
+    const [tagInput, setTagInput] = useState("");
 
     useEffect(() => {
         const loadData = async () => {
@@ -99,7 +129,8 @@ export default function StartupEditPage() {
                     business_model: startup.business_model || "",
                     founded_year: startup.founded_year || "",
                     team_size: startup.team_size || "",
-                    sector: Array.isArray(startup.industry_tags) ? startup.industry_tags[0] : (startup.industry_tags || startup.sector || ""),
+                    sector: startup.industry_tags && startup.industry_tags.length > 0 ? startup.industry_tags[0] : (startup.sector || ""),
+                    industry_tags: Array.isArray(startup.industry_tags) ? startup.industry_tags : [],
                     thumbnail: startup.og_image || "",
                     meta_keywords: startup.meta_keywords || "",
                     image_alt: startup.og_image_alt || "",
@@ -151,7 +182,7 @@ export default function StartupEditPage() {
             const prompt = fillTemplate(template, { title: formData.name });
             const result = await generateContent(prompt);
             if (result.content) {
-                setFormData(prev => ({ ...prev, description: result.content }));
+                setFormData((prev: any) => ({ ...prev, description: result.content }));
                 toast.success("✨ AI-generated content ready!");
             }
         } catch (err: any) {
@@ -172,7 +203,7 @@ export default function StartupEditPage() {
             const prompt = fillTemplate(template || "Generate a clean URL slug for: {title}", { title: formData.name });
             const result = await generateContent(prompt);
             if (result.content) {
-                setFormData(prev => ({ ...prev, slug: generateSlugFromText(result.content) }));
+                setFormData((prev: any) => ({ ...prev, slug: generateSlugFromText(result.content) }));
                 toast.success("✨ Slug generated!");
             }
         } catch (err) {
@@ -184,12 +215,12 @@ export default function StartupEditPage() {
 
     const handleAddStandardSection = (template: { title: string; placeholder: string }) => {
         const sectionHtml = `\n<h2 id="${template.title.toLowerCase().replace(/\s+/g, '-')}">${template.title}</h2>\n<p>${template.placeholder}</p>\n`;
-        setFormData(prev => ({ ...prev, description: (prev.description || "") + sectionHtml }));
+        setFormData((prev: any) => ({ ...prev, description: (prev.description || "") + sectionHtml }));
     };
 
     const handleAddEmptySection = () => {
         const sectionHtml = `\n<h2>New Section</h2>\n<p>Start writing here...</p>\n`;
-        setFormData(prev => ({ ...prev, description: (prev.description || "") + sectionHtml }));
+        setFormData((prev: any) => ({ ...prev, description: (prev.description || "") + sectionHtml }));
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
@@ -221,7 +252,7 @@ export default function StartupEditPage() {
                     ...prev,
                     meta_title: data.meta_title || prev.meta_title,
                     meta_description: data.meta_description || prev.meta_description,
-                    meta_keywords: data.meta_keywords || prev.meta_keywords,
+                    meta_keywords: data.keywords || data.meta_keywords || prev.meta_keywords,
                 }));
                 toast.success("SEO content generated!");
             }
@@ -257,6 +288,24 @@ export default function StartupEditPage() {
         }));
     };
 
+    const addTag = () => {
+        const tag = tagInput.trim();
+        if (tag && !formData.industry_tags?.includes(tag)) {
+            setFormData((prev: any) => ({
+                ...prev,
+                industry_tags: [...(prev.industry_tags || []), tag]
+            }));
+            setTagInput("");
+        }
+    };
+
+    const removeTag = (tag: string) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            industry_tags: (prev.industry_tags || []).filter((t: string) => t !== tag)
+        }));
+    };
+
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
@@ -275,7 +324,7 @@ export default function StartupEditPage() {
                 founded_year: formData.founded_year ? parseInt(formData.founded_year.toString()) : undefined,
                 funding_stage: formData.stage || "",
                 business_model: formData.business_model || "",
-                industry_tags: formData.sector ? [formData.sector] : [],
+                industry_tags: formData.industry_tags?.length > 0 ? formData.industry_tags : (formData.sector ? [formData.sector] : []),
                 team_size: formData.team_size || "",
                 founders_data: foundersList,
                 is_featured: formData.is_featured,
@@ -342,8 +391,17 @@ export default function StartupEditPage() {
                             onClick={() => window.open(`${process.env.NEXT_PUBLIC_SITE_URL}/startups/${startupSlug}`, '_blank')}
                             className="h-9 px-4 rounded-xl bg-white border border-zinc-200 text-xs font-bold text-zinc-600 hover:text-zinc-900 shadow-sm transition-all flex items-center gap-1.5"
                         >
-                            <ExternalLink className="h-3.5 w-3.5" /> Preview
+                            <Eye className="h-3.5 w-3.5" /> Preview
                         </button>
+
+                        {formData.website_url && (
+                            <button
+                                onClick={() => window.open(formData.website_url, '_blank')}
+                                className="h-9 px-4 rounded-xl bg-white border border-zinc-200 text-xs font-bold text-zinc-600 hover:text-zinc-900 shadow-sm transition-all flex items-center gap-1.5"
+                            >
+                                <Globe className="h-3.5 w-3.5 text-blue-500" /> Visit Site
+                            </button>
+                        )}
 
                         <button
                             onClick={onSubmit}
@@ -447,6 +505,210 @@ export default function StartupEditPage() {
                                     onChange={(content) => handleChange("description", content)}
                                     placeholder="Tell the full story..."
                                 />
+                            </CardContent>
+                        </Card>
+
+                        {/* Business & Growth */}
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center gap-2.5">
+                                <div className="h-6 w-6 rounded-lg bg-emerald-600 flex items-center justify-center">
+                                    <LayoutGrid className="h-3.5 w-3.5 text-white" />
+                                </div>
+                                <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Business & Growth</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-6 space-y-8">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Founded Year</Label>
+                                        <Input
+                                            type="number"
+                                            placeholder="2024"
+                                            value={formData.founded_year}
+                                            onChange={(e) => handleChange("founded_year", e.target.value)}
+                                            className="h-10 px-3 rounded-xl border-zinc-200 bg-secondary focus:bg-white transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Funding Stage</Label>
+                                        <Select
+                                            value={formData.stage}
+                                            onValueChange={(v) => handleChange("stage", v)}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-secondary focus:bg-white transition-all text-xs font-semibold">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {STAGES.map(s => (
+                                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Business Model</Label>
+                                        <Select
+                                            value={formData.business_model}
+                                            onValueChange={(v) => handleChange("business_model", v)}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-secondary focus:bg-white transition-all text-xs font-semibold">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {BUSINESS_MODELS.map(m => (
+                                                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Team Size</Label>
+                                        <Select
+                                            value={formData.team_size}
+                                            onValueChange={(v) => handleChange("team_size", v)}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-secondary focus:bg-white transition-all text-xs font-semibold">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {TEAM_SIZES.map(s => (
+                                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Sector / Industry</Label>
+                                        <Select
+                                            value={formData.sector}
+                                            onValueChange={(v) => handleChange("sector", v)}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-secondary focus:bg-white transition-all text-xs font-semibold">
+                                                <SelectValue placeholder="Select Sector" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {SECTORS.map(s => (
+                                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Industry Tags */}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Industry Tags</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                placeholder="Add a tag and press Enter"
+                                                value={tagInput}
+                                                onChange={(e) => setTagInput(e.target.value)}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                                                className="h-10 px-3 rounded-xl border-zinc-200 bg-secondary focus:bg-white transition-all flex-1 text-xs"
+                                            />
+                                            <Button type="button" variant="outline" size="sm" className="h-10 w-10 rounded-xl text-xs flex items-center justify-center p-0 border-zinc-200" onClick={addTag}>
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        {formData.industry_tags && formData.industry_tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                {formData.industry_tags.map((tag: string) => (
+                                                    <span
+                                                        key={tag}
+                                                        className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border border-purple-100 cursor-pointer hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all"
+                                                        onClick={() => removeTag(tag)}
+                                                    >
+                                                        {tag}
+                                                        <X className="h-2.5 w-2.5" />
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Leadership Team */}
+                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="h-6 w-6 rounded-lg bg-blue-600 flex items-center justify-center">
+                                        <User className="h-3 w-3 text-white" />
+                                    </div>
+                                    <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Leadership Team</CardTitle>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-[9px] font-black uppercase tracking-wider rounded-lg gap-1.5 border-zinc-200"
+                                    onClick={addFounder}
+                                >
+                                    <Plus className="h-3 w-3" />
+                                    Add Member
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="p-6 space-y-6">
+                                {formData.founders_data && formData.founders_data.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {formData.founders_data.map((founder: any, idx: number) => (
+                                            <div
+                                                key={idx}
+                                                className="p-4 rounded-2xl border border-zinc-100 bg-zinc-50/50 space-y-4 relative group"
+                                            >
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="absolute top-2 right-2 h-7 w-7 text-zinc-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                    onClick={() => removeFounder(idx)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground ml-1">Full Name</Label>
+                                                        <Input
+                                                            value={founder.name}
+                                                            onChange={(e) => updateFounder(idx, 'name', e.target.value)}
+                                                            placeholder="e.g. Deepinder Goyal"
+                                                            className="h-9 px-3 rounded-xl border-zinc-200 bg-white text-xs"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground ml-1">Role / Designation</Label>
+                                                        <Input
+                                                            value={founder.role}
+                                                            onChange={(e) => updateFounder(idx, 'role', e.target.value)}
+                                                            placeholder="Founder & CEO"
+                                                            className="h-9 px-3 rounded-xl border-zinc-200 bg-white text-xs"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground ml-1">LinkedIn Profile</Label>
+                                                    <div className="relative">
+                                                        <ExternalLink className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-300" />
+                                                        <Input
+                                                            value={founder.linkedin}
+                                                            onChange={(e) => updateFounder(idx, 'linkedin', e.target.value)}
+                                                            placeholder="https://linkedin.com/in/..."
+                                                            className="h-9 pl-8 pr-3 rounded-xl border-zinc-200 bg-white text-xs"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-8 text-center bg-zinc-50/50 rounded-2xl border border-dashed border-zinc-200">
+                                        <User className="h-8 w-8 text-zinc-200 mb-2" />
+                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">No founders added</p>
+                                        <Button variant="link" size="sm" onClick={addFounder} className="text-blue-600 font-bold text-[10px] uppercase">Add Primary Founder</Button>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -595,13 +857,13 @@ export default function StartupEditPage() {
                             </CardHeader>
                             <CardContent className="p-4">
                                 {(() => {
-                                    const matches = [...(formData.description || "").matchAll(/<h[23][^>]*>([^<]*)<\/h[23]>/gi)];
+                                    const matches = [...(formData.description || "").matchAll(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi)];
                                     if (matches.length === 0) return <p className="text-[10px] font-bold text-zinc-400 uppercase text-center py-4">No headings</p>;
                                     return (
                                         <div className="flex flex-col gap-1.5">
                                             <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-zinc-400 border-l-2 border-purple-200">1. TL;DR (Auto)</div>
                                             {matches.map((m, i) => (
-                                                <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-zinc-600 border-l-2 border-zinc-100 italic">{i + 2}. {m[1].trim()}</div>
+                                                <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-zinc-600 border-l-2 border-zinc-100 italic">{i + 2}. {m[1].replace(/<[^>]*>/g, '').trim()}</div>
                                             ))}
                                         </div>
                                     );
@@ -639,6 +901,15 @@ export default function StartupEditPage() {
                                         className="min-h-[60px] rounded-lg bg-secondary border-border text-[10px] p-2 resize-none"
                                     />
                                 </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Meta Keywords</Label>
+                                    <Input
+                                        value={formData.meta_keywords || ""}
+                                        onChange={(e) => handleChange("meta_keywords", e.target.value)}
+                                        className="h-8 rounded-lg bg-secondary border-border text-[10px] focus:bg-white"
+                                        placeholder="Keywords, separated, by, commas"
+                                    />
+                                </div>
                                 <div className="flex items-center justify-between pt-2">
                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Featured</span>
                                     <Switch
@@ -660,15 +931,27 @@ export default function StartupEditPage() {
                             <CardContent className="p-5 space-y-4">
                                 <div className="space-y-1.5">
                                     <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Website</Label>
-                                    <div className="relative">
-                                        <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-300" />
-                                        <Input
-                                            type="url"
-                                            value={formData.website_url || ""}
-                                            onChange={(e) => handleChange("website_url", e.target.value)}
-                                            className="h-9 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white pl-9 text-[11px] transition-all"
-                                            placeholder="https://company.com"
-                                        />
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-300" />
+                                            <Input
+                                                type="url"
+                                                value={formData.website_url || ""}
+                                                onChange={(e) => handleChange("website_url", e.target.value)}
+                                                className="h-9 rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white pl-9 text-[11px] transition-all"
+                                                placeholder="https://company.com"
+                                            />
+                                        </div>
+                                        {formData.website_url && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => window.open(formData.website_url, '_blank')}
+                                                className="h-9 w-9 rounded-xl bg-zinc-50 border border-zinc-100 hover:bg-zinc-100 text-zinc-400 hover:text-blue-600 shrink-0"
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">

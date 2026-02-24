@@ -180,7 +180,8 @@ export default function NewStartupPage() {
                     ? prev.description + `\n<p>${generatedDesc}</p>`
                     : `<p>${generatedDesc}</p>`,
                 meta_title: seoResult.meta_title || `${formData.name} | Startup Directory`,
-                meta_description: seoResult.meta_description || generatedDesc || ""
+                meta_description: seoResult.meta_description || generatedDesc || "",
+                meta_keywords: seoResult.keywords || seoResult.meta_keywords || ""
             }));
 
             toast.success("Content generated with AI");
@@ -1018,6 +1019,15 @@ export default function NewStartupPage() {
                                             onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
                                             placeholder="Brief summary for search results..."
                                             className="min-h-[80px] px-3 py-2 rounded-xl border-zinc-200 bg-white resize-none text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Meta Keywords</Label>
+                                        <Input
+                                            value={formData.meta_keywords}
+                                            onChange={(e) => setFormData({ ...formData, meta_keywords: e.target.value })}
+                                            placeholder="Keywords, separated, by, commas"
+                                            className="h-9 px-3 rounded-xl border-zinc-200 bg-white"
                                         />
                                     </div>
                                 </div>

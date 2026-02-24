@@ -14,7 +14,9 @@ import {
     ChevronLeft,
     ChevronRight,
     Search,
-    X
+    X,
+    TrendingUp,
+    Sparkles
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
@@ -112,128 +114,110 @@ export function StoriesContent() {
     const hasActiveFilters = searchQuery || selectedCategory !== "all" || selectedCity !== "all" || selectedStage !== "all";
 
     return (
-        <div className="bg-background min-h-screen">
-            <section className="container-wide py-14 md:py-20 border-b border-border/60">
-                <div className="max-w-5xl space-y-6">
-                    <h1 className="text-4xl md:text-6xl font-black text-foreground font-serif tracking-tight">
-                        Latest Indian Startup Stories & Founder Journeys
-                    </h1>
-                    <p className="text-lg text-muted-foreground leading-relaxed">
-                        Your window into India&apos;s startup revolution. From bootstrapped beginnings to billion-dollar exits,
-                        we bring you the untold stories of founders who are reshaping industries.
+        <div className="bg-[#FAF9F6] min-h-screen">
+            {/* Header / Hero Section */}
+            <section className="container-wide pt-16 pb-12 md:pt-24 md:pb-16 text-center">
+                <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-zinc-900 mb-8 font-serif leading-[1.1] max-w-4xl mx-auto tracking-tight">
+                    Latest Indian Startup Stories & Founder Journeys
+                </h1>
+
+                <div className="space-y-4 mb-12">
+                    <p className="text-base md:text-lg text-zinc-600 max-w-4xl mx-auto leading-relaxed">
+                        Your window into India&apos;s startup revolution. From bootstrapped beginnings to billion-dollar exits, we bring you the untold stories of founders who are reshaping industries.
                     </p>
-                    <p className="text-lg text-muted-foreground leading-relaxed">
-                        Explore in-depth features on funding rounds, pivot moments, growth strategies, and the people behind
-                        India&apos;s most ambitious ventures. Updated regularly with the latest from Bengaluru, Mumbai, Delhi NCR,
-                        and emerging startup hubs nationwide.
+                    <p className="text-sm md:text-base text-zinc-500 max-w-3xl mx-auto leading-relaxed">
+                        Explore in-depth features on funding rounds, pivot moments, growth strategies, and the people behind India&apos;s most ambitious ventures. Updated regularly from across Bharat.
                     </p>
                 </div>
             </section>
 
-            <section className="container-wide py-10 border-b border-border/60">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-                    <div className="lg:col-span-4">
-                        <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search stories..."
-                                className="h-11 pl-11 rounded-xl border-border/60 bg-card"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery("")}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            {/* Sticky Filters Bar */}
+            <div className="sticky top-[72px] z-30 bg-white/80 backdrop-blur-xl border-y border-zinc-100 shadow-sm">
+                <div className="container-wide py-4">
+                    <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                        {/* Search and Main Filters */}
+                        <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+                            <div className="relative w-full md:w-64">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                                <Input
+                                    placeholder="Search stories..."
+                                    className="h-10 pl-11 rounded-xl border-zinc-200 bg-white/50 text-xs"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery("")}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+
+                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                <SelectTrigger className="h-10 w-[140px] rounded-xl border-zinc-200 bg-white/50 text-xs font-bold">
+                                    <SelectValue placeholder="Category" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-zinc-100 shadow-2xl">
+                                    <SelectItem value="all" className="text-xs">All Categories</SelectItem>
+                                    {categories.map(cat => (
+                                        <SelectItem key={cat.slug} value={cat.name} className="text-xs">{cat.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <Select value={selectedCity} onValueChange={setSelectedCity}>
+                                <SelectTrigger className="h-10 w-[140px] rounded-xl border-zinc-200 bg-white/50 text-xs font-bold">
+                                    <SelectValue placeholder="City" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-zinc-100 shadow-2xl">
+                                    <SelectItem value="all" className="text-xs">All Cities</SelectItem>
+                                    {cities.map(city => (
+                                        <SelectItem key={city.slug} value={city.name} className="text-xs">{city.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Sort and Clear */}
+                        <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-end">
+                            <div className="flex items-center gap-2 p-1 bg-zinc-50 rounded-xl border border-zinc-100">
+                                {[
+                                    { id: 'latest', label: 'Latest' },
+                                    { id: 'trending', label: 'Trending' },
+                                    { id: 'most_viewed', label: 'Popular' },
+                                ].map((s) => (
+                                    <button
+                                        key={s.id}
+                                        onClick={() => { setSortKey(s.id as any); setPage(1); }}
+                                        className={cn(
+                                            "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                                            sortKey === s.id
+                                                ? "bg-white text-accent shadow-sm ring-1 ring-zinc-200/50"
+                                                : "text-zinc-500 hover:text-zinc-900"
+                                        )}
+                                    >
+                                        {s.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {hasActiveFilters && (
+                                <Button
+                                    variant="ghost"
+                                    className="h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                                    onClick={clearFilters}
                                 >
-                                    <X className="h-4 w-4" />
-                                </button>
+                                    Clear
+                                </Button>
                             )}
                         </div>
                     </div>
-                    <div className="lg:col-span-2">
-                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                            <SelectTrigger className="h-11 rounded-xl border-border/60 bg-card">
-                                <SelectValue placeholder="All Categories" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border/60 shadow-2xl">
-                                <SelectItem value="all">All Categories</SelectItem>
-                                {categories.map(cat => (
-                                    <SelectItem key={cat.slug} value={cat.name}>{cat.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="lg:col-span-2">
-                        <Select value={selectedCity} onValueChange={setSelectedCity}>
-                            <SelectTrigger className="h-11 rounded-xl border-border/60 bg-card">
-                                <SelectValue placeholder="All Cities" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border/60 shadow-2xl">
-                                <SelectItem value="all">All Cities</SelectItem>
-                                {cities.map(city => (
-                                    <SelectItem key={city.slug} value={city.name}>{city.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="lg:col-span-2">
-                        <Select value={selectedStage} onValueChange={setSelectedStage}>
-                            <SelectTrigger className="h-11 rounded-xl border-border/60 bg-card">
-                                <SelectValue placeholder="All Stages" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border/60 shadow-2xl">
-                                <SelectItem value="all">All Stages</SelectItem>
-                                <SelectItem value="Bootstrapped">Bootstrapped</SelectItem>
-                                <SelectItem value="Pre-Seed">Pre-Seed</SelectItem>
-                                <SelectItem value="Seed">Seed</SelectItem>
-                                <SelectItem value="Series A">Series A</SelectItem>
-                                <SelectItem value="Series B+">Series B+</SelectItem>
-                                <SelectItem value="IPO">IPO</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="lg:col-span-2 flex items-center justify-between lg:justify-end gap-2">
-                        <span className="text-sm text-muted-foreground hidden lg:inline">Sort by:</span>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant={sortKey === "latest" ? "accent" : "ghost"}
-                                className={cn("h-9 rounded-full px-4 text-xs font-bold", sortKey === "latest" && "shadow-lg shadow-accent/20")}
-                                onClick={() => { setSortKey("latest"); setPage(1); }}
-                            >
-                                Latest
-                            </Button>
-                            <Button
-                                variant={sortKey === "trending" ? "accent" : "ghost"}
-                                className="h-9 rounded-full px-4 text-xs font-bold"
-                                onClick={() => { setSortKey("trending"); setPage(1); }}
-                            >
-                                Trending
-                            </Button>
-                            <Button
-                                variant={sortKey === "most_viewed" ? "accent" : "ghost"}
-                                className="h-9 rounded-full px-4 text-xs font-bold"
-                                onClick={() => { setSortKey("most_viewed"); setPage(1); }}
-                            >
-                                Most Viewed
-                            </Button>
-                        </div>
-                    </div>
                 </div>
+            </div>
 
-                <div className="flex items-center justify-between mt-6">
-                    <p className="text-sm text-muted-foreground">
-                        Showing {stories.length} of {totalCount} stories
-                    </p>
-                    {hasActiveFilters && (
-                        <Button variant="ghost" className="h-9 px-4 rounded-full text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-50" onClick={clearFilters}>
-                            Clear filters
-                        </Button>
-                    )}
-                </div>
-            </section>
-
-            <div className="container-wide py-12">
+            <div className="container-wide py-16 md:py-20">
                 <div className="space-y-12">
                     {isLoading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

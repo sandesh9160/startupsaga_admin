@@ -21,13 +21,20 @@ export function FrontendBreadcrumbs() {
         setIsMounted(true);
     }, []);
 
-    // Don't show on homepage
-    if (!isMounted || pathname === "/") return null;
+    if (!isMounted) return null;
 
-    const segments = pathname.split("/").filter((segment) => segment !== "");
+    // Normalize pathname (remove trailing slash)
+    const cleanPath = pathname.replace(/\/$/, "");
+
+    const hiddenRoutes = ["", "/stories", "/startups", "/categories", "/cities"];
+
+    const shouldHide = hiddenRoutes.includes(cleanPath);
+
+    if (shouldHide) return null;
+
+    const segments = cleanPath.split("/").filter(Boolean);
 
     const getBreadcrumbLabel = (segment: string) => {
-        // Basic title casing: "my-story" -> "My Story"
         return segment
             .replace(/-/g, " ")
             .replace(/\b\w/g, (char) => char.toUpperCase());

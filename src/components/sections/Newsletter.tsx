@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, ArrowRight, CheckCircle } from "lucide-react";
 
-export function Newsletter() {
+interface NewsletterProps {
+  title?: string;
+  description?: string;
+  buttonText?: string;
+}
+
+export function Newsletter({ title, description, buttonText }: NewsletterProps) {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -25,11 +31,10 @@ export function Newsletter() {
             <Mail className="h-8 w-8 text-accent" />
           </div>
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Stay Updated with Startup Stories
+            {title || "Stay Updated with Startup Stories"}
           </h2>
           <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-            Get the latest startup stories, founder insights, and ecosystem updates
-            delivered to your inbox every week.
+            {description || "Get the latest startup stories, founder insights, and ecosystem updates delivered to your inbox every week."}
           </p>
 
           {submitted ? (
@@ -51,7 +56,7 @@ export function Newsletter() {
                 suppressHydrationWarning
               />
               <Button type="submit" variant="accent" size="lg" className="gap-2" suppressHydrationWarning>
-                Subscribe
+                {buttonText || "Subscribe"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </form>

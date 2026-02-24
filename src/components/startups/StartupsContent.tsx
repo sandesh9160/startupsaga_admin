@@ -8,7 +8,8 @@ import {
     ChevronRight,
     Search,
     X,
-    Rocket
+    Rocket,
+    Building2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -76,28 +77,25 @@ export function StartupsContent() {
     return (
         <div className="bg-[#FAF9F6] min-h-screen">
             {/* Centered Header Section */}
-            <section className="container-wide pt-20 pb-16 text-center relative overflow-hidden">
-                {/* Subtle Decorative Elements */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full opacity-[0.03] pointer-events-none">
-                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-accent rounded-full blur-[120px]" />
-                    <div className="absolute top-0 right-1/4 w-96 h-96 bg-accent rounded-full blur-[120px]" />
-                </div>
-
-                <div className="relative z-10 max-w-4xl mx-auto space-y-6">
-                    <h1 className="text-4xl md:text-6xl font-black text-zinc-900 font-serif leading-[1.1] tracking-tight">
+            <section className="container-wide pt-14 pb-12 md:pt-20 md:pb-16 text-left relative overflow-hidden">
+                <div className="relative z-10 max-w-4xl mx-auto">
+                    <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-zinc-900 mb-6 font-serif leading-[1.1] max-w-4xl mx-auto tracking-tight">
                         India Startup Directory - Discover <span className="text-accent">5,000+</span> Companies
                     </h1>
-                    <p className="text-lg md:text-xl text-zinc-500 max-w-3xl mx-auto leading-relaxed">
-                        The most comprehensive directory of Indian startups—from early-stage disruptors to established unicorns. Browse companies across fintech, SaaS, D2C, healthtech, and more.
-                    </p>
-                    <p className="text-sm text-zinc-400 max-w-2xl mx-auto">
-                        Filter by sector, city, or funding stage to find startups that match your interests, whether you're an investor, job seeker, or fellow entrepreneur.
-                    </p>
+
+                    <div className="space-y-4 mb-12">
+                        <p className="text-base md:text-lg text-zinc-600 max-w-4xl mx-auto leading-relaxed">
+                            The most comprehensive directory of Indian startups—from early-stage disruptors to established unicorns. Browse companies across fintech, SaaS, D2C, healthtech, and more, all building the future of India's digital economy.
+                        </p>
+                        <p className="text-sm md:text-base text-zinc-500 max-w-3xl mx-auto leading-relaxed">
+                            Filter by sector, city, or funding stage to find startups that match your interests, whether you're an investor, job seeker, or fellow entrepreneur.
+                        </p>
+                    </div>
 
                     {/* Centered Search Bar */}
-                    <div className="max-w-2xl mx-auto mt-12 relative group">
+                    <div className="max-w-2xl mx-auto relative group">
                         <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-zinc-400 group-focus-within:text-accent transition-colors" />
+                            <Search className="h-5 w-5 text-zinc-300 group-focus-within:text-accent transition-colors" />
                         </div>
                         <Input
                             placeholder="Search startups by name or description..."
@@ -179,7 +177,7 @@ export function StartupsContent() {
             </div>
 
             {/* Main Content Area */}
-            <section className="container-wide py-16">
+            <section className="container-wide py-16 md:py-20">
                 <div className="max-w-7xl mx-auto space-y-12">
                     {/* Results Counter */}
                     {!isLoading && (
