@@ -193,6 +193,36 @@ export default function NewStartupPage() {
         }
     };
 
+    const handleGenerateSEO = async () => {
+        if (!formData.name && !formData.description) {
+            toast.error("Please enter a startup name or description first");
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            const seoResult = await generateSEO({
+                title: formData.name,
+                description: formData.tagline || formData.name,
+                content: formData.description || formData.name,
+                type: 'startup'
+            });
+
+            setFormData(prev => ({
+                ...prev,
+                meta_title: seoResult.meta_title || prev.meta_title,
+                meta_description: seoResult.meta_description || prev.meta_description,
+                meta_keywords: seoResult.keywords || seoResult.meta_keywords || prev.meta_keywords
+            }));
+
+            toast.success("SEO Meta Data updated with AI");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to generate SEO");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const addFounder = () => {
         setFormData(prev => ({
             ...prev,
@@ -998,9 +1028,22 @@ export default function NewStartupPage() {
 
                             {/* SEO Section */}
                             <div className="p-6 space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Sparkles className="h-3.5 w-3.5 text-zinc-400" />
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">SEO Meta Data</span>
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles className="h-3.5 w-3.5 text-zinc-400" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">SEO Meta Data</span>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 gap-1 px-2 rounded-lg border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 transition-all text-[8px] font-bold uppercase tracking-wider"
+                                        onClick={handleGenerateSEO}
+                                        disabled={isGenerating || (!formData.name && !formData.description)}
+                                    >
+                                        {isGenerating ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
+                                        AI Rewrite
+                                    </Button>
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">

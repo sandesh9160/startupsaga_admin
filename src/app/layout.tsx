@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display } from "next/font/google";
+import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { siteConfig } from "@/config/site";
@@ -7,6 +7,11 @@ import { siteConfig } from "@/config/site";
 const playfair = Playfair_Display({
     subsets: ["latin"],
     variable: "--font-playfair",
+});
+
+const inter = Inter({
+    subsets: ["latin"],
+    variable: "--font-inter",
 });
 
 /**
@@ -37,7 +42,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" suppressHydrationWarning>
-            <body className={`${playfair.variable} font-sans antialiased`} suppressHydrationWarning>
+            <body className={`${playfair.variable} ${inter.variable} font-sans antialiased`} suppressHydrationWarning>
                 <Providers>
                     {/* Main content area */}
                     <main className="min-h-screen bg-background">

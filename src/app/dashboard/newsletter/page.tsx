@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { getNewsletterSubscribers, newsletterTemplatesApi, getTrendingStories } from "@/lib/api";
+import { getNewsletterSubscribers, newsletterTemplatesApi, getTrendingStories, API_BASE_URL } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";

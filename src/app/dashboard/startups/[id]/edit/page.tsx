@@ -880,8 +880,15 @@ export default function StartupEditPage() {
                                     </div>
                                     SEO Metadata
                                 </CardTitle>
-                                <Button onClick={handleGenerateSEO} disabled={isGeneratingSEO} variant="ghost" className="h-7 px-2 rounded-lg text-[9px] font-black text-amber-600 hover:bg-amber-50">
-                                    {isGeneratingSEO ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3 mr-1" />} Auto
+                                <Button
+                                    type="button"
+                                    onClick={handleGenerateSEO}
+                                    disabled={isGeneratingSEO}
+                                    variant="outline"
+                                    className="h-6 gap-1 px-2 rounded-lg border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 transition-all text-[8px] font-bold uppercase tracking-wider"
+                                >
+                                    {isGeneratingSEO ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
+                                    AI Rewrite
                                 </Button>
                             </CardHeader>
                             <CardContent className="p-4 space-y-4">

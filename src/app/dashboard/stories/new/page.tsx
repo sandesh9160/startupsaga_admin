@@ -1282,14 +1282,14 @@ function NewStoryPageContent() {
                                 </CardTitle>
                                 <Button
                                     type="button"
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
                                     onClick={handleGenerateSEO}
                                     disabled={isGenerating}
-                                    className="h-7 px-3 text-[10px] font-bold text-primary hover:text-primary/90 hover:bg-emerald-50 rounded-lg"
+                                    className="h-6 gap-1 px-2 rounded-lg border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 transition-all text-[8px] font-bold uppercase tracking-wider"
                                 >
-                                    {isGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
-                                    Auto-Fill
+                                    {isGenerating ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
+                                    AI Rewrite
                                 </Button>
                             </CardHeader>
                             <CardContent className="p-5 space-y-4">
@@ -1331,7 +1331,20 @@ function NewStoryPageContent() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Image Alt Text</Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Image Alt Text</Label>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleGenerateAltText}
+                                            disabled={isGenerating}
+                                            className="h-5 px-1.5 text-[8px] font-bold text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-md transition-all"
+                                        >
+                                            {isGenerating ? <Loader2 className="h-2 w-2 animate-spin" /> : <Sparkles className="h-2 w-2 mr-1" />}
+                                            AI Generate
+                                        </Button>
+                                    </div>
                                     <Input
                                         value={formData.image_alt || ""}
                                         onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}

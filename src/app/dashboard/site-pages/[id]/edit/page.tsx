@@ -708,22 +708,22 @@ function SectionPreview({ section, sampleData, viewport = 'desktop' }: { section
 
                                 // ─── HELPER FOR SECTION STYLES (MATCHES FRONTEND) ───
                                 const getBaseStyles = (s: any, fallbackPY = 80) => {
-                                    const bg = st.backgroundColor || (s.type === 'hero' ? 'transparent' : (st.backgroundColor || '#ffffff'));
+                                    const bg = s.backgroundColor || (s.type === 'hero' ? 'transparent' : (s.backgroundColor || '#ffffff'));
 
                                     return {
                                         backgroundColor: bg,
-                                        paddingTop: st.paddingY !== undefined && st.paddingY !== null ? st.paddingY : fallbackPY,
-                                        paddingBottom: st.paddingY !== undefined && st.paddingY !== null ? st.paddingY : fallbackPY,
-                                        paddingLeft: st.paddingX !== undefined && st.paddingX !== null ? st.paddingX : undefined,
-                                        paddingRight: st.paddingX !== undefined && st.paddingX !== null ? st.paddingX : undefined,
-                                        marginTop: st.marginTop !== undefined ? st.marginTop : undefined,
-                                        marginBottom: st.marginBottom !== undefined ? st.marginBottom : undefined,
-                                        marginLeft: st.marginLeft !== undefined ? st.marginLeft : undefined,
-                                        marginRight: st.marginRight !== undefined ? st.marginRight : undefined,
-                                        textAlign: (st.align || 'left') as any,
-                                        fontFamily: st.fontFamily && st.fontFamily !== 'inherit' ? st.fontFamily : 'inherit',
-                                        fontSize: st.fontSize ? `${st.fontSize}px` : undefined,
-                                        color: st.textColor || undefined,
+                                        paddingTop: s.paddingY !== undefined && s.paddingY !== null ? s.paddingY : fallbackPY,
+                                        paddingBottom: s.paddingY !== undefined && s.paddingY !== null ? s.paddingY : fallbackPY,
+                                        paddingLeft: s.paddingX !== undefined && s.paddingX !== null ? s.paddingX : undefined,
+                                        paddingRight: s.paddingX !== undefined && s.paddingX !== null ? s.paddingX : undefined,
+                                        marginTop: s.marginTop !== undefined ? s.marginTop : undefined,
+                                        marginBottom: s.marginBottom !== undefined ? s.marginBottom : undefined,
+                                        marginLeft: s.marginLeft !== undefined ? s.marginLeft : undefined,
+                                        marginRight: s.marginRight !== undefined ? s.marginRight : undefined,
+                                        textAlign: (s.align || 'left') as any,
+                                        fontFamily: s.fontFamily && s.fontFamily !== 'inherit' ? s.fontFamily : 'inherit',
+                                        fontSize: s.fontSize ? `${s.fontSize}px` : undefined,
+                                        color: s.textColor || undefined,
                                     };
                                 };
 
@@ -2059,10 +2059,10 @@ Response Format (JSON ONLY, no markdown):
                                             disabled={!!aiLoading}
                                             variant="outline"
                                             size="sm"
-                                            className="h-7 text-xs gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                            className="h-6 gap-1 px-2 rounded-lg border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 transition-all text-[8px] font-bold uppercase tracking-wider"
                                         >
-                                            <Sparkles size={12} />
-                                            Generate with AI
+                                            {aiLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
+                                            AI Rewrite
                                         </Button>
                                     </div>
                                     <div className="space-y-3">
