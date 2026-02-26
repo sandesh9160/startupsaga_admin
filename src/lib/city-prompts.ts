@@ -73,7 +73,7 @@ export async function CityAltText(name: string) {
     const prompt = fillTemplate(template, { name });
 
     const response = await generateContent(prompt);
-    let altText = response?.content || response;
+    const altText = response?.content || response;
 
     if (altText && typeof altText === 'string') {
         return altText.replace(/^["']|["']$/g, '').trim();

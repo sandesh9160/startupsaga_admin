@@ -68,6 +68,7 @@ export default function EditCategoryPage() {
         if (slug) {
             loadCategory();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [slug]);
 
     const loadCategory = async () => {
@@ -138,9 +139,10 @@ export default function EditCategoryPage() {
             await categoriesApi.update(slug, formData);
             toast.success("Category updated successfully");
             router.push("/dashboard/categories");
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            toast.error(err.message || "Failed to update category");
+            const message = err instanceof Error ? err.message : "Failed to update category";
+            toast.error(message);
         } finally {
             setIsLoading(false);
         }

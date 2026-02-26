@@ -12,9 +12,9 @@ import { toast } from "sonner";
 import {
     Save,
     Loader2,
-    BookOpen,
+    // BookOpen,
     User,
-    Tag,
+    // Tag,
     Eye,
     ExternalLink,
     Sparkles,
@@ -22,21 +22,21 @@ import {
     Image as ImageIcon,
     X,
     Building,
-    Edit,
+    // Edit,
     Plus,
     ChevronLeft,
     Globe,
-    Zap,
+    // Zap,
     List,
     CheckCircle2,
     PenTool,
     Layout,
     FileText,
-    MapPin,
-    Calendar,
+    // MapPin,
+    // Calendar,
     Lightbulb,
     Trash2,
-    MoreHorizontal,
+    // MoreHorizontal,
     LayoutGrid
 } from "lucide-react";
 import {
@@ -54,9 +54,9 @@ import {
 } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/dashboard/RichTextEditor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
+// import { Badge } from "@/components/ui/badge";
+// import Link from "next/link";
+import { cn, stripHtml } from "@/lib/utils";
 import { getSafeImageSrc } from "@/lib/images";
 import { generateContent } from "@/lib/api";
 import { getPromptTemplate, fillTemplate } from "@/lib/prompt-manager";
@@ -133,7 +133,7 @@ export default function StartupEditPage() {
                     industry_tags: Array.isArray(startup.industry_tags) ? startup.industry_tags : [],
                     thumbnail: startup.og_image || "",
                     meta_keywords: startup.meta_keywords || "",
-                    image_alt: startup.og_image_alt || "",
+                    image_alt: startup.image_alt || "",
                     founders_data: seedFounders,
                 };
                 setFormData(processedStartup);
@@ -204,7 +204,7 @@ export default function StartupEditPage() {
             const result = await generateContent(prompt);
             if (result.content) {
                 setFormData((prev: any) => ({ ...prev, slug: generateSlugFromText(result.content) }));
-                toast.success("✨ Slug generated!");
+                toast.success("Slug generated!");
             }
         } catch (err) {
             toast.error("Failed to generate slug");
@@ -239,15 +239,16 @@ export default function StartupEditPage() {
             toast.error("Please fill in Startup Name and Description first");
             return;
         }
+        const cleanContent = stripHtml(formData.description || "");
         setIsGeneratingSEO(true);
         try {
             const data = await generateSEO({
                 title: formData.name,
-                description: formData.description,
-                content: `Startup: ${formData.name}. Description: ${formData.description}. Founder: ${formData.founder_name || ''}. Website: ${formData.website_url || ''}`,
+                description: formData.tagline || "",
+                content: cleanContent || formData.tagline || formData.name,
                 type: 'startup'
             });
-            if (data) {
+            if (data && !data.error) {
                 setFormData((prev: any) => ({
                     ...prev,
                     meta_title: data.meta_title || prev.meta_title,
@@ -255,9 +256,32 @@ export default function StartupEditPage() {
                     meta_keywords: data.keywords || data.meta_keywords || prev.meta_keywords,
                 }));
                 toast.success("SEO content generated!");
+            } else {
+                toast.error(data?.error || "Failed to generate SEO content");
             }
-        } catch (error) {
-            toast.error("Failed to generate SEO content");
+        } catch (error: any) {
+            const msg = error?.message || "Failed to generate SEO content";
+            toast.error(msg.includes("503") ? "AI service is not configured. Check your GEMINI_API_KEY in the backend .env file." : msg);
+        } finally {
+            setIsGeneratingSEO(false);
+        }
+    };
+
+    const handleGenerateAltText = async () => {
+        if (!formData.name) {
+            toast.error("Please enter a startup name first");
+            return;
+        }
+        setIsGeneratingSEO(true);
+        try {
+            const prompt = `Generate a concise, descriptive image alt text for a startup named "${formData.name}". Focus on it being a professional brand logo or representational image for ${formData.sector || 'the startup'}. Keep it under 10 words.`;
+            const result = await generateContent(prompt);
+            if (result.content) {
+                setFormData((prev: any) => ({ ...prev, image_alt: result.content.replace(/"/g, '').trim() }));
+                toast.success("Alt text generated!");
+            }
+        } catch (err) {
+            toast.error("Failed to generate alt text");
         } finally {
             setIsGeneratingSEO(false);
         }
@@ -335,7 +359,7 @@ export default function StartupEditPage() {
                 meta_description: formData.meta_description,
                 meta_keywords: formData.meta_keywords || "",
                 og_image: formData.thumbnail,
-                og_image_alt: formData.image_alt || "",
+                image_alt: formData.image_alt || "",
                 logo: formData.logo
             };
 
@@ -915,6 +939,27 @@ export default function StartupEditPage() {
                                         onChange={(e) => handleChange("meta_keywords", e.target.value)}
                                         className="h-8 rounded-lg bg-secondary border-border text-[10px] focus:bg-white"
                                         placeholder="Keywords, separated, by, commas"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Alt Text (SEO)</Label>
+                                        <Button
+                                            type="button"
+                                            onClick={handleGenerateAltText}
+                                            disabled={isGeneratingSEO}
+                                            variant="ghost"
+                                            className="h-5 gap-1 px-1.5 rounded-md text-[8px] font-bold text-purple-600 hover:text-purple-700 hover:bg-purple-50 transition-all uppercase tracking-widest"
+                                        >
+                                            {isGeneratingSEO ? <Loader2 className="h-2 w-2 animate-spin" /> : <Sparkles className="h-2 w-2" />}
+                                            AI Suggest
+                                        </Button>
+                                    </div>
+                                    <Input
+                                        value={formData.image_alt || ""}
+                                        onChange={(e) => handleChange("image_alt", e.target.value)}
+                                        className="h-8 rounded-lg bg-secondary border-border text-[10px] focus:bg-white"
+                                        placeholder="Describe the image..."
                                     />
                                 </div>
                                 <div className="flex items-center justify-between pt-2">

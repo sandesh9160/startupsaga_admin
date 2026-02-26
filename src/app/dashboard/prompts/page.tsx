@@ -12,7 +12,7 @@ import {
     Target,
     Zap,
     Circle,
-    CheckCircle2,
+    // CheckCircle2,
     Code2,
     Eye,
     LayoutGrid,
@@ -23,7 +23,7 @@ import {
     Cpu,
     Command,
     BrainCircuit,
-    Wand2,
+    // Wand2,
     Plus,
     Settings
 } from "lucide-react";
@@ -40,8 +40,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { getPrompts, createPrompt, updatePrompt, deletePrompt } from "@/lib/api";
+// import { Separator } from "@/components/ui/separator";
+import { getPrompts, createPrompt, updatePrompt, deletePrompt, applyPrompts, getPromptDefaults } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -53,51 +53,6 @@ const CATEGORIES = [
     { value: 'general', label: 'General', icon: Settings, color: 'text-amber-600 bg-amber-100 border-amber-200' },
 ];
 
-const DEFAULT_PROMPTS = [
-    {
-        name: "Story Content Generator",
-        category: "story_write",
-        prompt_text: "Write an inspiring 800-word startup success story for: {title}. Include sections: The Problem, The Solution, Founder Journey, and Revenue Model. Use professional editorial tone.",
-        is_active: true
-    },
-    {
-        name: "Story SEO Generator",
-        category: "seo_gen",
-        prompt_text: 'Generate a compiled SEO meta title and meta description for a startup story titled "{title}".\nContent Snippet: {content}\n\nReturn strictly a JSON object with keys: "meta_title" and "meta_description".',
-        is_active: true
-    },
-    {
-        name: "Story Alt Text Generator",
-        category: "desc_gen",
-        prompt_text: 'Write a concise, descriptive alt text (max 15 words) for a cover image of a startup story titled "{title}". Focus on the subject matter or business context. Do not include "image of".',
-        is_active: true
-    },
-    {
-        name: "Slug Generator",
-        category: "general",
-        prompt_text: 'Generate a short, SEO-friendly URL slug (lowercase, hyphens only, max 5 words) for this title: "{title}". Return ONLY the slug, nothing else.',
-        is_active: true
-    },
-    {
-        name: "City SEO Generator",
-        category: "seo_gen",
-        prompt_text: 'Generate SEO metadata for a startup hub page for the city: {title}.\nDescription: {description}.\n\nReturn strictly a JSON object with keys: meta_title, meta_description, keywords.',
-        is_active: true
-    },
-    {
-        name: "City Description",
-        category: "desc_gen",
-        prompt_text: "Rewrite and enhance this city description for a startup ecosystem portal: {name}.\nCurrent description: {description}\n\nMake it professional, engaging, and highlight why it's a great place for startups. Use about 150-200 words.",
-        is_active: true
-    },
-    {
-        name: "City Alt Text",
-        category: "desc_gen",
-        prompt_text: 'Write a professional alt text for a cover image representing the startup ecosystem of {name}. Focus on the city skyline or innovation vibe. Max 15 words.',
-        is_active: true
-    }
-];
-
 const PROMPT_USAGE_MAP: Record<string, { file: string, function: string }> = {
     "Story Content Generator": { file: "admin/src/app/dashboard/stories/new/page.tsx", function: "handleWriteWithAI" },
     "Story SEO Generator": { file: "admin/src/app/dashboard/stories/new/page.tsx", function: "handleGenerateSEO" },
@@ -105,7 +60,8 @@ const PROMPT_USAGE_MAP: Record<string, { file: string, function: string }> = {
     "Slug Generator": { file: "admin/src/app/dashboard/stories/new/page.tsx", function: "handleGenerateSlug" },
     "City SEO Generator": { file: "admin/src/lib/city-prompts.ts", function: "CitySEOGenerator" },
     "City Description": { file: "admin/src/lib/city-prompts.ts", function: "CityDescription" },
-    "City Alt Text": { file: "admin/src/lib/city-prompts.ts", function: "CityAltText" }
+    "City Alt Text": { file: "admin/src/lib/city-prompts.ts", function: "CityAltText" },
+    "Global SEO Generator": { file: "Backend/cms/ai_utils.py", function: "generate_seo_suggestions" }
 };
 
 export default function PromptsPage() {
@@ -117,6 +73,8 @@ export default function PromptsPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [editForm, setEditForm] = useState<any>({});
     const [mounted, setMounted] = useState(false);
+
+    const [isApplying, setIsApplying] = useState(false);
 
     const loadPrompts = async () => {
         try {
@@ -200,6 +158,20 @@ export default function PromptsPage() {
         }
     };
 
+    const handleApplyAll = async () => {
+        if (!confirm("Push these AI rules to all site architectures? This acknowledges the new neural logic as active.")) return;
+
+        try {
+            setIsApplying(true);
+            const res = await applyPrompts();
+            toast.success(res.message || "AI Protocols synchronized!");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to apply protocols");
+        } finally {
+            setIsApplying(false);
+        }
+    };
+
     const getCategoryInfo = (category: string) => {
         return CATEGORIES.find(c => c.value === category) || CATEGORIES[3];
     };
@@ -210,9 +182,10 @@ export default function PromptsPage() {
         setIsLoading(true);
         try {
             let addedCount = 0;
+            const defaults_data = await getPromptDefaults();
             const existingNames = new Set(prompts.map((p: any) => p.name));
 
-            for (const defaults of DEFAULT_PROMPTS) {
+            for (const defaults of defaults_data) {
                 if (!existingNames.has(defaults.name)) {
                     await createPrompt(defaults);
                     addedCount++;
@@ -269,6 +242,16 @@ export default function PromptsPage() {
                                 title="Restore Defaults"
                             >
                                 <Box className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                onClick={handleApplyAll}
+                                variant="ghost"
+                                disabled={isApplying}
+                                className="h-7 w-7 p-0 rounded-lg hover:bg-amber-100 text-amber-500 hover:text-amber-600 transition-all"
+                                title="Apply to All architectures"
+                            >
+                                {isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
                             </Button>
                         </div>
                     </div>

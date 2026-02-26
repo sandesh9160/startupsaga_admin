@@ -1,10 +1,10 @@
-
 import { getPrompts } from "./api";
+import { AIPrompt } from "@/types";
 
 /**
  * Cache configuration
  */
-let promptsCache: any[] | null = null;
+let promptsCache: AIPrompt[] | null = null;
 let lastFetch = 0;
 const CACHE_TTL = 30000; // 30 seconds
 

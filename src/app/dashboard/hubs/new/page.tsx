@@ -74,7 +74,7 @@ export default function CityFormPage() {
         setMounted(true);
     }, []);
 
-    const [mediaItems, setMediaItems] = useState<any[]>([]);
+    const [mediaItems, setMediaItems] = useState<Record<string, unknown>[]>([]);
     const [formData, setFormData] = useState<Partial<ExtendedCity>>({
         name: "",
         slug: "",
@@ -94,6 +94,7 @@ export default function CityFormPage() {
         if (isEditing) {
             loadCity();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [slug]);
 
     const loadCity = async () => {
@@ -135,8 +136,9 @@ export default function CityFormPage() {
                 toast.success("City created successfully");
             }
             router.push("/dashboard/hubs");
-        } catch (err: any) {
-            toast.error(err.message || "Failed to save city");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to save city";
+            toast.error(message);
         } finally {
             setIsSaving(false);
         }
@@ -609,7 +611,7 @@ export default function CityFormPage() {
                                         onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
                                         className="min-h-[60px] rounded-xl bg-white border-zinc-200 focus:ring-2 focus:ring-purple-500/10 text-xs font-medium resize-none"
                                     />
-                                    <p className="text-[9px] text-zinc-400 font-medium">Generate SEO-friendly text describing this city's image.</p>
+                                    <p className="text-[9px] text-zinc-400 font-medium">Generate SEO-friendly text describing this city&apos;s image.</p>
                                 </CardContent>
                             </Card>
 

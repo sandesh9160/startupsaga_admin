@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+//import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from "@/components/dashboard/RichTextEditor";
-import { cn } from "@/lib/utils";
+import { cn, stripHtml } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import {
     Select,
@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { fetchAPI, generateContent, generateSEO, getSubmissionDetail, createStory, getStories, updateStory, getStoryById, updateSubmissionStatus, getStartups, getCategories, getHubs } from "@/lib/api";
+import { Startup, Category, Hub, MediaItem, Submission } from "@/types";
 import { getPromptTemplate, fillTemplate } from "@/lib/prompt-manager";
 import { toast } from "sonner";
 import { getSafeImageSrc } from "@/lib/images";
@@ -84,9 +85,9 @@ function NewStoryPageContent() {
     const editSlug = searchParams.get('edit');
     const editIdParam = searchParams.get('editId');
     const sectionIdCounter = useRef(0);
-    const [startups, setStartups] = useState<any[]>([]);
-    const [categories, setCategories] = useState<any[]>([]);
-    const [hubs, setHubs] = useState<any[]>([]);
+    const [startups, setStartups] = useState<Startup[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [hubs, setHubs] = useState<Hub[]>([]);
 
     const [isLoading, setIsLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -94,7 +95,7 @@ function NewStoryPageContent() {
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
     const [isSlugSynced, setIsSlugSynced] = useState(true);
     const [sections, setSections] = useState<Array<{ id: string; title: string; content: string }>>([]);
-    const [mediaItems, setMediaItems] = useState<any[]>([]);
+    const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
     const [editingStoryId, setEditingStoryId] = useState<number | null>(null);
     const [formData, setFormData] = useState<StoryFormData>({
         title: "",
@@ -117,7 +118,7 @@ function NewStoryPageContent() {
     });
 
     // Local state to hold raw submission info for display
-    const [submissionDetails, setSubmissionDetails] = useState<any | null>(null);
+    const [submissionDetails, setSubmissionDetails] = useState<Submission | null>(null);
 
     const sectionTemplates = [
         { title: "The Problem", placeholder: "Describe the problem this startup is solving..." },
@@ -359,34 +360,34 @@ function NewStoryPageContent() {
             return;
         }
         setIsGenerating(true);
-        console.log("🤖 Starting AI content generation for:", formData.title);
+        console.log("Starting AI content generation for:", formData.title);
 
         try {
             let template = await getPromptTemplate("Story Content Generator");
             const prompt = fillTemplate(template, { title: formData.title });
 
-            console.log("📝 Sending prompt to AI:", prompt.substring(0, 100) + "...");
+            console.log("Sending prompt to AI:", prompt.substring(0, 100) + "...");
 
             const result = await generateContent(prompt);
-            console.log("✅ AI Response received:", result);
+            console.log("AI Response received:", result);
 
             // Check for error response from backend
             if (result.error) {
-                console.error("❌ AI Error:", result.error);
+                console.error("AI Error:", result.error);
                 toast.error(`AI Error: ${result.error}`);
                 return;
             }
 
             if (result.content) {
-                console.log("✅ Content generated, length:", result.content.length);
+                console.log("Content generated, length:", result.content.length);
                 setFormData(prev => ({ ...prev, content: result.content }));
-                toast.success("✨ AI-generated content ready!");
+                toast.success("AI-generated content ready!");
             } else {
-                console.warn("⚠️ No content in response:", result);
+                console.warn("No content in response:", result);
                 toast.error("AI returned empty response. Please try again.");
             }
         } catch (err: any) {
-            console.error("❌ Content Generation Error:", err);
+            console.error("Content Generation Error:", err);
             const errorMessage = err.message || String(err);
             toast.error(`Failed to generate content: ${errorMessage}`);
         } finally {
@@ -399,8 +400,9 @@ function NewStoryPageContent() {
             toast.error("Please enter a title first!");
             return;
         }
+        const cleanContent = stripHtml(formData.content || "");
         setIsGenerating(true);
-        console.log("🤖 Starting SEO generation for:", formData.title);
+        console.log("Starting SEO generation for:", formData.title);
 
         try {
             // Check for custom SEO prompt
@@ -411,11 +413,11 @@ function NewStoryPageContent() {
                 const prompt = fillTemplate(template, {
                     title: formData.title,
                     description: formData.excerpt || "",
-                    content: formData.content || "",
+                    content: cleanContent || formData.content || "",
                     type: "story"
                 }) + "\n\nReturn the result strictly as a JSON object with keys: meta_title, meta_description, meta_keywords, image_alt. The meta_description MUST BE 160 characters OR LESS.";
 
-                console.log("📝 Sending custom SEO prompt:", prompt);
+                console.log("Sending custom SEO prompt:", prompt);
                 const result = await generateContent(prompt);
 
                 if (result.content) {
@@ -433,7 +435,7 @@ function NewStoryPageContent() {
                                 meta_keywords: parsed.meta_keywords || parsed.keywords || prev.meta_keywords,
                                 image_alt: parsed.image_alt || prev.image_alt
                             }));
-                            toast.success("✨ Custom SEO metadata generated!");
+                            toast.success("Custom SEO metadata generated!");
                         } else {
                             throw new Error("Invalid JSON structure");
                         }
@@ -444,7 +446,7 @@ function NewStoryPageContent() {
                         const requestData = {
                             title: formData.title,
                             description: formData.excerpt || "",
-                            content: formData.content || "",
+                            content: cleanContent || formData.content || "",
                             type: "story"
                         };
                         const fallbackResult = await generateSEO(requestData);
@@ -456,7 +458,7 @@ function NewStoryPageContent() {
                                 meta_keywords: fallbackResult.meta_keywords || fallbackResult.keywords || prev.meta_keywords,
                                 image_alt: fallbackResult.image_alt || prev.image_alt
                             }));
-                            toast.success("✨ SEO metadata generated!");
+                            toast.success("SEO metadata generated!");
                         }
                     }
                 }
@@ -465,19 +467,19 @@ function NewStoryPageContent() {
                 const requestData = {
                     title: formData.title,
                     description: formData.excerpt || "",
-                    content: formData.content || "",
+                    content: cleanContent || formData.content || "",
                     type: "story"
                 };
-                console.log("📝 Sending SEO request:", requestData);
+                console.log("Sending SEO request:", requestData);
 
                 const result = await generateSEO(requestData);
-                console.log("✅ SEO Response received:", result);
+                console.log("SEO Response received:", result);
 
                 if (result.error) {
-                    console.error("❌ SEO Error:", result.error);
+                    console.error("SEO Error:", result.error);
                     toast.error(`AI Error: ${result.error}`);
                 } else if (result.meta_title && result.meta_description) {
-                    console.log("✅ SEO metadata generated successfully");
+                    console.log("SEO metadata generated successfully");
                     setFormData(prev => ({
                         ...prev,
                         meta_title: result.meta_title,
@@ -485,14 +487,14 @@ function NewStoryPageContent() {
                         meta_keywords: result.meta_keywords || result.keywords || prev.meta_keywords,
                         image_alt: result.image_alt || prev.image_alt
                     }));
-                    toast.success("✨ SEO metadata generated!");
+                    toast.success("SEO metadata generated!");
                 } else {
-                    console.warn("⚠️ Incomplete SEO data:", result);
+                    console.warn("Incomplete SEO data:", result);
                     toast.error("AI returned incomplete data. Please try again.");
                 }
             }
         } catch (err: any) {
-            console.error("❌ SEO Generation Error:", err);
+            console.error("SEO Generation Error:", err);
             const errorMessage = err.message || String(err);
             toast.error(`Failed to generate SEO: ${errorMessage}`);
         } finally {
@@ -506,29 +508,29 @@ function NewStoryPageContent() {
             return;
         }
         setIsGenerating(true);
-        console.log("🤖 Starting alt text generation for:", formData.title);
+        console.log("Starting alt text generation for:", formData.title);
 
         try {
             const template = await getPromptTemplate("Story Alt Text Generator");
             const prompt = fillTemplate(template, { title: formData.title });
 
             const result = await generateContent(prompt);
-            console.log("✅ Alt Text Response received:", result);
+            console.log("Alt Text Response received:", result);
 
             if (result.error) {
-                console.error("❌ Alt Text Error:", result.error);
+                console.error("Alt Text Error:", result.error);
                 toast.error(`AI Error: ${result.error}`);
             } else if (result.content) {
                 let altText = result.content.replace(/^["']|["']$/g, '');
-                console.log("✅ Generated alt text:", altText);
+                console.log("Generated alt text:", altText);
                 setFormData(prev => ({ ...prev, image_alt: altText }));
-                toast.success("✨ Alt text generated!");
+                toast.success("Alt text generated!");
             } else {
-                console.warn("⚠️ No content in alt text response");
+                console.warn("No content in alt text response");
                 toast.error("Failed to generate alt text.");
             }
         } catch (err: any) {
-            console.error("❌ Alt Text Generation Error:", err);
+            console.error("Alt Text Generation Error:", err);
             toast.error(`Failed to generate alt text: ${err.message}`);
         } finally {
             setIsGenerating(false);
@@ -541,17 +543,17 @@ function NewStoryPageContent() {
             return;
         }
         setIsGenerating(true);
-        console.log("🤖 Starting slug generation for:", formData.title);
+        console.log("Starting slug generation for:", formData.title);
 
         try {
             const template = await getPromptTemplate("Slug Generator");
             const prompt = fillTemplate(template, { title: formData.title });
 
             const result = await generateContent(prompt);
-            console.log("✅ Slug Response received:", result);
+            console.log("Slug Response received:", result);
 
             if (result.error) {
-                console.error("❌ Slug Error:", result.error);
+                console.error("Slug Error:", result.error);
                 toast.error(`AI Error: ${result.error}`);
                 return;
             }
@@ -618,16 +620,16 @@ function NewStoryPageContent() {
             let result;
             if (editingStoryId) {
                 // Update existing story
-                console.log(`🔄 Updating story ID: ${editingStoryId}`);
+                console.log(`Updating story ID: ${editingStoryId}`);
                 result = await updateStory(editingStoryId, storyData);
-                console.log("✅ Story updated:", result);
-                toast.success(targetStatus === 'published' ? "🎉 Story published!" : "💾 Draft saved!");
+                console.log("Story updated:", result);
+                toast.success(targetStatus === 'published' ? " Story published!" : "Draft saved!");
             } else {
                 // Create new story
-                console.log("✨ Creating new story");
+                console.log("Creating new story");
                 result = await createStory(storyData);
-                console.log("✅ Story created:", result);
-                toast.success(targetStatus === 'published' ? "🎉 Story published!" : "💾 Draft saved!");
+                console.log("Story created:", result);
+                toast.success(targetStatus === 'published' ? " Story published!" : "Draft saved!");
             }
 
             // Wait a brief moment before redirecting
@@ -635,7 +637,7 @@ function NewStoryPageContent() {
                 router.push("/dashboard/stories");
             }, 500);
         } catch (err: any) {
-            console.error("❌ Save Error:", err);
+            console.error("Save Error:", err);
             toast.error(err.message || "Failed to save story.");
             setIsPublishing(false); // Re-enable on error
         }
@@ -749,7 +751,7 @@ function NewStoryPageContent() {
                                         </Button>
                                     </div>
                                     <Input
-                                        placeholder="e.g., Zepto Raises $665M, Becomes India's Fastest Growing Unicorn"
+                                        placeholder="e.g., Zepto Raises $665M, Becomes India&apos;s Fastest Growing Unicorn"
                                         value={formData.title || ""}
                                         onChange={(e) => {
                                             const newTitle = e.target.value;

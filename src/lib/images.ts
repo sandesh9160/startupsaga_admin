@@ -1,7 +1,5 @@
 import { API_BASE_URL } from "./api";
 
-const BASE_URL = API_BASE_URL.replace("/api", "");
-
 export function getSafeImageSrc(src: unknown, fallback: string = "/placeholder.svg") {
   if (typeof src === "string") {
     const trimmed = src.trim();
@@ -28,6 +26,7 @@ export function getSafeImageSrc(src: unknown, fallback: string = "/placeholder.s
       // Handle other relative paths presumably from Django
       // If it looks like a path but doesn't have media prefix, try adding it
       // Many Django fields return relative to MEDIA_ROOT without the prefix
+
       const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 
       // If we have a BASE_URL and it's a relative path, we should probably prefix it with /media

@@ -17,6 +17,7 @@ import {
     Settings,
     Plus,
     RefreshCw,
+    Image as ImageIcon
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -119,7 +120,8 @@ export function DashboardClientContent({ initialCounts }: { initialCounts: any }
     const quickLinks = [
         { label: "New Story", path: "/dashboard/stories/new", icon: FileText, color: "text-purple-600", bg: "bg-purple-50" },
         { label: "Add Startup", path: "/dashboard/startups/new", icon: Building2, color: "text-blue-600", bg: "bg-blue-50" },
-        { label: "Submissions", path: "/dashboard/submissions", icon: Inbox, color: "text-amber-600", bg: "bg-amber-50" },
+        { label: "Media Library", path: "/dashboard/media", icon: ImageIcon, color: "text-orange-600", bg: "bg-orange-50" },
+        { label: "Reviews", path: "/dashboard/submissions", icon: Inbox, color: "text-amber-600", bg: "bg-amber-50" },
         { label: "Settings", path: "/dashboard/settings", icon: Settings, color: "text-zinc-600", bg: "bg-zinc-100" },
     ];
 

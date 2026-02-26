@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
     Select,
     SelectContent,
@@ -77,9 +78,16 @@ export default function SubmissionsPage() {
         category: "",
         full_story: "",
         funding_stage: "",
-        logo: "" as string | null,
-        thumbnail: "" as string | null,
-        og_image: "" as string | null
+        business_model: "",
+        team_size: "",
+        sector: "",
+        founded_year: "" as string | number,
+        industry_tags: [] as string[],
+        founders_data: [] as any[],
+        logo: "" as string | undefined,
+        thumbnail: "" as string | undefined,
+        og_image: "" as string | undefined,
+        display_type: "startup" as "startup" | "blog"
     });
 
     const loadSubmissions = async (showLoading = true) => {
@@ -142,9 +150,16 @@ export default function SubmissionsPage() {
             category: submission.category || "",
             full_story: submission.full_story || "",
             funding_stage: submission.funding_stage || "Early Stage",
-            logo: submission.logo || null,
-            thumbnail: submission.thumbnail || null,
-            og_image: submission.og_image || null
+            business_model: submission.business_model || "",
+            team_size: submission.team_size || "",
+            sector: submission.sector || "",
+            founded_year: submission.founded_year || "",
+            industry_tags: submission.industry_tags || [],
+            founders_data: submission.founders_data || [],
+            logo: submission.logo || undefined,
+            thumbnail: submission.thumbnail || undefined,
+            og_image: submission.og_image || undefined,
+            display_type: (submission as any).display_type || "startup"
         });
     };
 
@@ -429,23 +444,40 @@ export default function SubmissionsPage() {
                             </div>
                             <div>
                                 <DialogTitle className="text-lg font-bold tracking-tight text-zinc-900">Edit Submission</DialogTitle>
+                                <p className="text-[10px] text-zinc-500 font-medium tracking-wide uppercase mt-0.5">Reference ID: #{editingSubmission?.id}</p>
                             </div>
                         </div>
                     </div>
 
                     <div className="p-6 space-y-6">
-                        {/* Image Assets Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Display Type Toggle & Image Assets */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="space-y-4 p-4 rounded-xl bg-purple-50/50 border border-purple-100 flex flex-col justify-center">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">Display As</Label>
+                                    <Badge variant="outline" className="bg-white text-[9px] font-black">{editForm.display_type === 'startup' ? 'DIRECTORY' : 'BLOG'}</Badge>
+                                </div>
+                                <div className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-purple-100/50 shadow-sm">
+                                    <span className={cn("text-[10px] font-bold transition-colors", editForm.display_type === 'startup' ? "text-purple-600" : "text-zinc-400")}>Startup</span>
+                                    <Switch
+                                        checked={editForm.display_type === 'blog'}
+                                        onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, display_type: checked ? 'blog' : 'startup' }))}
+                                        className="data-[state=checked]:bg-purple-600"
+                                    />
+                                    <span className={cn("text-[10px] font-bold transition-colors", editForm.display_type === 'blog' ? "text-purple-600" : "text-zinc-400")}>Blog</span>
+                                </div>
+                            </div>
+
                             <div className="space-y-3">
                                 <Label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                                     <ImageIcon className="h-3.5 w-3.5" /> Logo
                                 </Label>
                                 <div
                                     onClick={() => document.getElementById('logo-upload')?.click()}
-                                    className="h-24 w-24 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-center cursor-pointer group hover:bg-white hover:border-zinc-300 transition-all overflow-hidden relative shadow-sm"
+                                    className="h-20 w-20 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-center cursor-pointer group hover:bg-white hover:border-zinc-300 transition-all overflow-hidden relative shadow-sm"
                                 >
                                     {editForm.logo ? (
-                                        <img src={getSafeImageSrc(editForm.logo)} alt="Logo" className="w-full h-full object-contain p-3" />
+                                        <img src={getSafeImageSrc(editForm.logo)} alt="Logo" className="w-full h-full object-contain p-2" />
                                     ) : (
                                         <Plus className="h-4 w-4 text-zinc-300" />
                                     )}
@@ -459,7 +491,7 @@ export default function SubmissionsPage() {
                                 </Label>
                                 <div
                                     onClick={() => document.getElementById('thumb-upload')?.click()}
-                                    className="aspect-video w-full max-w-[240px] rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-center cursor-pointer group hover:bg-white hover:border-zinc-300 transition-all overflow-hidden relative shadow-sm"
+                                    className="h-20 w-32 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-center cursor-pointer group hover:bg-white hover:border-zinc-300 transition-all overflow-hidden relative shadow-sm"
                                 >
                                     {editForm.thumbnail ? (
                                         <img src={getSafeImageSrc(editForm.thumbnail)} alt="Thumb" className="w-full h-full object-cover" />
@@ -469,23 +501,31 @@ export default function SubmissionsPage() {
                                     <input id="thumb-upload" type="file" className="hidden" onChange={(e) => handleImageUpload(e, 'thumbnail')} />
                                 </div>
                             </div>
+
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                                    <ImageIcon className="h-3.5 w-3.5" /> OG Image
+                                </Label>
+                                <div
+                                    onClick={() => document.getElementById('og-upload')?.click()}
+                                    className="h-20 w-32 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-center cursor-pointer group hover:bg-white hover:border-zinc-300 transition-all overflow-hidden relative shadow-sm"
+                                >
+                                    {editForm.og_image ? (
+                                        <img src={getSafeImageSrc(editForm.og_image)} alt="OG" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <ImageIcon className="h-5 w-5 text-zinc-300" />
+                                    )}
+                                    <input id="og-upload" type="file" className="hidden" onChange={(e) => handleImageUpload(e, 'og_image')} />
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Text Content Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Startup Name</Label>
                                 <Input
                                     value={editForm.startup_name}
                                     onChange={(e) => setEditForm({ ...editForm, startup_name: e.target.value })}
-                                    className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-sm"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Founder Name</Label>
-                                <Input
-                                    value={editForm.founder_name}
-                                    onChange={(e) => setEditForm({ ...editForm, founder_name: e.target.value })}
                                     className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-sm"
                                 />
                             </div>
@@ -507,6 +547,144 @@ export default function SubmissionsPage() {
                             </div>
                         </div>
 
+                        {/* Business & Growth Details */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-2xl bg-zinc-50 border border-zinc-100">
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Founded Year</Label>
+                                <Input
+                                    value={editForm.founded_year}
+                                    onChange={(e) => setEditForm({ ...editForm, founded_year: e.target.value })}
+                                    className="h-8 rounded-lg bg-white border-zinc-200 text-xs font-bold"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Funding Stage</Label>
+                                <Input
+                                    value={editForm.funding_stage}
+                                    onChange={(e) => setEditForm({ ...editForm, funding_stage: e.target.value })}
+                                    className="h-8 rounded-lg bg-white border-zinc-200 text-xs font-bold"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Model</Label>
+                                <Input
+                                    value={editForm.business_model}
+                                    onChange={(e) => setEditForm({ ...editForm, business_model: e.target.value })}
+                                    className="h-8 rounded-lg bg-white border-zinc-200 text-xs font-bold"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Team Size</Label>
+                                <Input
+                                    value={editForm.team_size}
+                                    onChange={(e) => setEditForm({ ...editForm, team_size: e.target.value })}
+                                    className="h-8 rounded-lg bg-white border-zinc-200 text-xs font-bold"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Sector / Industry</Label>
+                                <Input
+                                    value={editForm.sector}
+                                    onChange={(e) => setEditForm({ ...editForm, sector: e.target.value })}
+                                    className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-sm"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Location / City</Label>
+                                <Input
+                                    value={editForm.city}
+                                    onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                                    className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Leadership Team Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[10px] font-bold uppercase text-zinc-800 tracking-widest flex items-center gap-2">
+                                    <User className="h-3.5 w-3.5 text-purple-600" /> Leadership Team
+                                </Label>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-[9px] font-black uppercase tracking-wider rounded-lg border-zinc-200"
+                                    onClick={() => setEditForm(prev => ({
+                                        ...prev,
+                                        founders_data: [...prev.founders_data, { name: "", role: "", linkedin: "" }]
+                                    }))}
+                                >
+                                    <Plus className="h-3 w-3 mr-1" /> Add Member
+                                </Button>
+                            </div>
+
+                            <div className="space-y-3">
+                                {editForm.founders_data.map((founder: any, idx: number) => (
+                                    <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50/50 border border-zinc-100 relative group">
+                                        <div className="grid grid-cols-3 gap-3 flex-1">
+                                            <Input
+                                                placeholder="Name"
+                                                value={founder.name}
+                                                onChange={(e) => {
+                                                    const updated = [...editForm.founders_data];
+                                                    updated[idx].name = e.target.value;
+                                                    setEditForm({ ...editForm, founders_data: updated });
+                                                }}
+                                                className="h-8 rounded-lg bg-white text-xs"
+                                            />
+                                            <Input
+                                                placeholder="Role"
+                                                value={founder.role}
+                                                onChange={(e) => {
+                                                    const updated = [...editForm.founders_data];
+                                                    updated[idx].role = e.target.value;
+                                                    setEditForm({ ...editForm, founders_data: updated });
+                                                }}
+                                                className="h-8 rounded-lg bg-white text-xs"
+                                            />
+                                            <Input
+                                                placeholder="LinkedIn"
+                                                value={founder.linkedin}
+                                                onChange={(e) => {
+                                                    const updated = [...editForm.founders_data];
+                                                    updated[idx].linkedin = e.target.value;
+                                                    setEditForm({ ...editForm, founders_data: updated });
+                                                }}
+                                                className="h-8 rounded-lg bg-white text-xs"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => setEditForm(prev => ({
+                                                ...prev,
+                                                founders_data: prev.founders_data.filter((_: any, i: number) => i !== idx)
+                                            }))}
+                                            className="text-zinc-300 hover:text-rose-500 transition-colors"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {editForm.founders_data.length === 0 && (
+                                    <div className="py-8 text-center border-2 border-dashed border-zinc-100 rounded-2xl flex flex-col items-center gap-2">
+                                        <User className="h-6 w-6 text-zinc-200" />
+                                        <span className="text-[10px] font-bold text-zinc-400 tracking-wider">NO LEADERSHIP DATA</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5 px-1">
+                            <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Short Tagline</Label>
+                            <Input
+                                value={editForm.description}
+                                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                                className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-sm"
+                            />
+                        </div>
+
                         <div className="space-y-3">
                             <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Story Narrative</Label>
                             <Textarea
@@ -519,24 +697,27 @@ export default function SubmissionsPage() {
 
                     <div className="p-6 bg-zinc-50/50 border-t border-zinc-100 flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex gap-2 w-full md:w-auto">
-                            {editingSubmission?.status === 'pending' && (
+                            {editingSubmission?.status === 'pending' && editForm.display_type === 'startup' && (
                                 <button
-                                    onClick={() => handleStatusUpdate(editingSubmission.id, 'approved')}
+                                    onClick={() => router.push(`/dashboard/startups/new?submission=${editingSubmission?.id}`)}
                                     className="h-10 px-5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-100 font-bold text-xs uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
-                                    title="Display Startup"
+                                    title="Pre-fill Startup Profile"
                                 >
-                                    <CheckCircle2 size={16} />
-                                    Display Startup
+                                    <Building2 size={16} />
+                                    Review & Publish
                                 </button>
                             )}
-                            <button
-                                onClick={() => router.push(`/dashboard/stories/new?submission=${editingSubmission?.id}`)}
-                                className="h-10 px-5 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-100 font-bold text-xs uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
-                                title="Write Story (Blog)"
-                            >
-                                <FilePlus size={16} />
-                                Write Story
-                            </button>
+
+                            {editForm.display_type === 'blog' && (
+                                <button
+                                    onClick={() => router.push(`/dashboard/stories/new?submission=${editingSubmission?.id}`)}
+                                    className="h-10 px-5 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-100 font-bold text-xs uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
+                                    title="Write Story (Blog)"
+                                >
+                                    <FilePlus size={16} />
+                                    Publish as Blog
+                                </button>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-3 w-full md:w-auto justify-end">

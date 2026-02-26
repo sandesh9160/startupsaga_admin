@@ -68,7 +68,7 @@ export default function NewsletterPage() {
             const active = data.find((t: any) => t.is_active) || data[0];
             if (active) {
                 // Fetch full detail for the active one
-                const detail = await newsletterTemplatesApi.get(active.id);
+                const detail = await newsletterTemplatesApi.get(active.id as number);
                 setActiveTemplate(detail);
             }
         } catch (err) {

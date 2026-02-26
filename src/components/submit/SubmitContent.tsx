@@ -138,15 +138,15 @@ export function SubmitContent() {
         setIsSubmitting(true);
         try {
             await submitStartup({
-                startupName: values.startupName,
-                founderName: values.founderName,
+                startup_name: values.startupName,
+                founder_name: values.founderName,
                 email: values.email,
                 website: values.website || "",
                 description: values.tagline,
-                fullStory: values.storyContent,
+                full_story: values.storyContent,
                 city: values.city,
                 category: values.category,
-                fundingStage: values.fundingStage,
+                funding_stage: values.fundingStage,
             });
             setIsSuccess(true);
             toast.success("Startup submitted successfully!");

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,10 +52,11 @@ import {
     startupsApi,
     getCategories,
     getHubs,
+    getSubmissionDetail,
     Category,
     Hub
 } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, stripHtml } from "@/lib/utils";
 import { getSafeImageSrc } from "@/lib/images";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -88,8 +89,10 @@ const SECTORS = [
 
 const TEAM_SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
 
-export default function NewStartupPage() {
+function NewStartupPageContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const submissionId = searchParams.get('submission');
     const [isLoading, setIsLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -119,6 +122,7 @@ export default function NewStartupPage() {
         meta_title: "",
         meta_description: "",
         meta_keywords: "",
+        image_alt: "",
     });
 
     const [tagInput, setTagInput] = useState("");
@@ -137,12 +141,51 @@ export default function NewStartupPage() {
                 const [cats, hbs] = await Promise.all([getCategories(), getHubs()]);
                 setCategories(cats);
                 setHubs(hbs);
+
+                // Pre-fill from submission if ID is present
+                if (submissionId) {
+                    setIsLoading(true);
+                    try {
+                        const subId = parseInt(submissionId);
+                        const sub = await getSubmissionDetail(subId);
+
+                        if (sub && !sub.error) {
+                            setFormData(prev => ({
+                                ...prev,
+                                name: sub.startup_name || "",
+                                slug: toSlug(sub.startup_name || ""),
+                                website_url: sub.website || "",
+                                description: sub.full_story || sub.description || "",
+                                tagline: sub.tagline || "",
+                                founder_name: sub.founder_name || "",
+                                logo: sub.logo || sub.logo_url || "",
+                                og_image: sub.og_image || "",
+                                stage: sub.funding_stage || "Early Stage",
+                                founded_year: sub.founded_year || "",
+                                city: sub.city || "",
+                                category: sub.category || "",
+                                business_model: sub.business_model || "",
+                                team_size: sub.team_size || "",
+                                sector: sub.sector || "",
+                                industry_tags: sub.industry_tags || [],
+                                founders_data: sub.founders_data || sub.founders || [],
+                            }));
+                            setSlugLocked(true);
+                            toast.info("Data loaded from submission");
+                        }
+                    } catch (subErr) {
+                        console.error("Error loading submission data:", subErr);
+                        toast.error("Failed to load submission data");
+                    } finally {
+                        setIsLoading(false);
+                    }
+                }
             } catch (err) {
                 console.error("Failed to load categories/hubs", err);
             }
         };
         loadData();
-    }, []);
+    }, [submissionId]);
 
     const handleGenerateContent = async () => {
         if (!formData.name) {
@@ -198,12 +241,13 @@ export default function NewStartupPage() {
             toast.error("Please enter a startup name or description first");
             return;
         }
+        const cleanContent = stripHtml(formData.description || "");
         setIsGenerating(true);
         try {
             const seoResult = await generateSEO({
                 title: formData.name,
                 description: formData.tagline || formData.name,
-                content: formData.description || formData.name,
+                content: cleanContent || formData.description || formData.name,
                 type: 'startup'
             });
 
@@ -254,6 +298,26 @@ export default function NewStartupPage() {
 
     const removeTag = (tag: string) => {
         setFormData(prev => ({ ...prev, industry_tags: prev.industry_tags.filter(t => t !== tag) }));
+    };
+
+    const handleGenerateAltText = async () => {
+        if (!formData.name) {
+            toast.error("Please enter a startup name first");
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            const prompt = `Generate a concise, descriptive image alt text for a startup named "${formData.name}". Focus on it being a professional brand logo or representational image for ${formData.sector || 'the startup'}. Keep it under 10 words.`;
+            const result = await generateContent(prompt);
+            if (result.content) {
+                setFormData((prev: any) => ({ ...prev, image_alt: result.content.replace(/"/g, '').trim() }));
+                toast.success("Alt text generated!");
+            }
+        } catch (err) {
+            toast.error("Failed to generate alt text");
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
@@ -1073,6 +1137,27 @@ export default function NewStartupPage() {
                                             className="h-9 px-3 rounded-xl border-zinc-200 bg-white"
                                         />
                                     </div>
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Alt Text (SEO)</Label>
+                                            <Button
+                                                type="button"
+                                                onClick={handleGenerateAltText}
+                                                disabled={isGenerating}
+                                                variant="ghost"
+                                                className="h-5 gap-1 px-1.5 rounded-md text-[8px] font-bold text-purple-600 hover:text-purple-700 hover:bg-purple-50 transition-all uppercase tracking-widest"
+                                            >
+                                                {isGenerating ? <Loader2 className="h-2 w-2 animate-spin" /> : <Sparkles className="h-2 w-2" />}
+                                                AI Suggest
+                                            </Button>
+                                        </div>
+                                        <Input
+                                            value={formData.image_alt || ""}
+                                            onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
+                                            placeholder="Describe the image..."
+                                            className="h-9 px-3 rounded-xl border-zinc-200 bg-white"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
@@ -1113,5 +1198,13 @@ export default function NewStartupPage() {
                 </div>
             </form>
         </div>
+    );
+}
+
+export default function NewStartupPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-purple-600" /></div>}>
+            <NewStartupPageContent />
+        </Suspense>
     );
 }

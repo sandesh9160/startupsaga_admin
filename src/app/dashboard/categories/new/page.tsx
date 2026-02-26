@@ -83,7 +83,7 @@ export default function NewCategoryPage() {
                 meta_keywords: seoResult.meta_keywords || prev.meta_keywords,
             }));
             toast.success("Content generated with AI");
-        } catch (err) {
+        } catch {
             toast.error("Failed to generate content");
         } finally {
             setIsGenerating(false);
@@ -97,8 +97,9 @@ export default function NewCategoryPage() {
             await categoriesApi.create(formData);
             toast.success("Category created successfully");
             router.push("/dashboard/categories");
-        } catch (err: any) {
-            toast.error(err.message || "Failed to create category");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to create category";
+            toast.error(message);
         } finally {
             setIsLoading(false);
         }

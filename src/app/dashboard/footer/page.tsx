@@ -54,10 +54,20 @@ const SOCIAL_ICONS: Record<string, React.ReactNode> = {
     whatsapp: <Phone className="h-4 w-4" />,
 };
 
+export interface FooterItem {
+    id: number;
+    label: string;
+    url: string;
+    position: string;
+    order: number;
+    parent: number | string | null;
+    is_active?: boolean;
+}
+
 export default function DashboardFooterPage() {
     const [activeTab, setActiveTab] = useState<"structure" | "preview">("preview");
 
-    const [footerItems, setFooterItems] = useState<any[]>([]);
+    const [footerItems, setFooterItems] = useState<FooterItem[]>([]);
     const [isLoadingNav, setIsLoadingNav] = useState(true);
 
     const [tagline, setTagline] = useState("Discovering and celebrating the incredible startup journeys across India.");
@@ -78,7 +88,7 @@ export default function DashboardFooterPage() {
     ]);
 
     const [showAddForm, setShowAddForm] = useState(false);
-    const [newItem, setNewItem] = useState({ label: "", url: "", parent: "" });
+    const [newItem, setNewItem] = useState({ label: "", url: "", parent: "", position: "footer" });
     const [isSavingItem, setIsSavingItem] = useState(false);
     const formRef = useRef<HTMLDivElement>(null);
 
@@ -175,14 +185,14 @@ export default function DashboardFooterPage() {
                 body: JSON.stringify({
                     label: newItem.label,
                     url: newItem.url,
-                    position: "footer",
+                    position: newItem.position,
                     is_active: true,
                     parent: newItem.parent ? parseInt(newItem.parent) : null,
                 }),
             });
             if (res.ok) {
                 toast.success("Footer link added!");
-                setNewItem({ label: "", url: "", parent: "" });
+                setNewItem({ label: "", url: "", parent: "", position: "footer" });
                 setShowAddForm(false);
                 loadNavItems();
             } else throw new Error();
@@ -216,8 +226,11 @@ export default function DashboardFooterPage() {
                                                 Inactive
                                             </span>
                                         )}
+                                        <span className="text-[9px] font-black uppercase bg-purple-50 text-purple-500 px-1.5 py-0.5 rounded-md border border-purple-100">
+                                            {item.position.replace('_', ' ')}
+                                        </span>
                                         {footerItems.some((c) => c.parent === item.id) && (
-                                            <span className="text-[9px] font-black uppercase bg-purple-50 text-purple-500 px-1.5 py-0.5 rounded-md border border-purple-100">
+                                            <span className="text-[9px] font-black uppercase bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-md border border-blue-100">
                                                 Column
                                             </span>
                                         )}
@@ -327,7 +340,10 @@ export default function DashboardFooterPage() {
                                         <div className="md:col-span-1">
                                             <div className="flex items-center gap-3 mb-3">
                                                 {logoPreview ? (
-                                                    <img src={logoPreview} alt={siteName} className="w-10 h-10 object-contain rounded-lg bg-white/10 p-1" />
+                                                    <>
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img src={logoPreview} alt={siteName} className="w-10 h-10 object-contain rounded-lg bg-white/10 p-1" />
+                                                    </>
                                                 ) : (
                                                     <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
                                                         <span className="font-serif text-lg font-black text-white">{siteName.charAt(0)}</span>
@@ -346,7 +362,7 @@ export default function DashboardFooterPage() {
                                         </div>
 
                                         {/* Footer columns */}
-                                        {topLevelItems.slice(0, 3).map((col) => {
+                                        {topLevelItems.map((col) => {
                                             const children = getChildren(col.id);
                                             return (
                                                 <div key={col.id}>
@@ -407,7 +423,10 @@ export default function DashboardFooterPage() {
                                                 onClick={() => logoInputRef.current?.click()}
                                             >
                                                 {logoPreview ? (
-                                                    <img src={logoPreview} alt={siteName} className="h-9 w-auto object-contain rounded-lg" />
+                                                    <>
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img src={logoPreview} alt={siteName} className="h-9 w-auto object-contain rounded-lg" />
+                                                    </>
                                                 ) : (
                                                     <div className="w-9 h-9 rounded-lg bg-zinc-100 flex items-center justify-center">
                                                         <ImageIcon className="h-4 w-4 text-zinc-300" />
@@ -478,8 +497,8 @@ export default function DashboardFooterPage() {
                             </div>
 
                             {/* Social Links */}
-                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                                <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
+                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                                <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between shrink-0">
                                     <div className="flex items-center gap-2.5">
                                         <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
                                             <Globe className="h-3 w-3 text-white" />
@@ -493,10 +512,10 @@ export default function DashboardFooterPage() {
                                         <Plus className="h-3 w-3" /> Add
                                     </button>
                                 </div>
-                                <div className="p-4 space-y-2.5">
+                                <div className="p-4 space-y-2.5 flex-1 overflow-y-auto max-h-[300px]">
                                     {socials.map((s, i) => (
                                         <div key={i} className="flex items-center gap-2">
-                                            <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-500 flex-shrink-0 [&>svg]:h-4 [&>svg]:w-4">
+                                            <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-500 flex-shrink-0">
                                                 {SOCIAL_ICONS[s.platform] || <Globe className="h-4 w-4" />}
                                             </div>
                                             <select
@@ -531,7 +550,41 @@ export default function DashboardFooterPage() {
                                         </div>
                                     ))}
                                     {socials.length === 0 && (
-                                        <p className="text-xs text-zinc-300 italic text-center py-6">No social links yet. Click Add.</p>
+                                        <p className="text-xs text-zinc-300 italic text-center py-6">No social links yet.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Navigation Quick Access */}
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="h-6 w-6 rounded-lg bg-orange-600 flex items-center justify-center">
+                                        <LinkIcon className="h-3 w-3 text-white" />
+                                    </div>
+                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Footer Navigation Links</span>
+                                </div>
+                                <button
+                                    onClick={() => setActiveTab("structure")}
+                                    className="h-7 px-3 rounded-lg text-[10px] font-bold text-zinc-500 border border-zinc-200 hover:bg-zinc-50 transition-all"
+                                >
+                                    Manage Links
+                                </button>
+                            </div>
+                            <div className="p-4">
+                                <div className="flex flex-wrap gap-2">
+                                    {topLevelItems.map((item) => (
+                                        <Badge
+                                            key={item.id}
+                                            variant="secondary"
+                                            className="px-3 py-1 bg-zinc-50 text-zinc-600 border border-zinc-200 rounded-lg text-[10px] font-bold uppercase"
+                                        >
+                                            {item.label}
+                                        </Badge>
+                                    ))}
+                                    {topLevelItems.length === 0 && (
+                                        <p className="text-xs text-zinc-400 italic">No columns defined yet.</p>
                                     )}
                                 </div>
                             </div>
@@ -574,7 +627,7 @@ export default function DashboardFooterPage() {
                                         <PanelBottom className="h-6 w-6 text-purple-200" />
                                     </div>
                                     <p className="text-sm font-bold text-zinc-400">No footer links yet</p>
-                                    <p className="text-xs text-zinc-300">Click "Add Link" to get started</p>
+                                    <p className="text-xs text-zinc-300">Click &quot;Add Link&quot; to get started</p>
                                 </div>
                             ) : (
                                 renderStructureItems(null)
@@ -601,7 +654,19 @@ export default function DashboardFooterPage() {
                                     </div>
 
                                     <form onSubmit={handleAddItem} className="p-5 space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Position</Label>
+                                                <select
+                                                    className="w-full h-10 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs font-semibold text-zinc-700 outline-none focus:bg-white transition-all"
+                                                    value={newItem.position}
+                                                    onChange={(e) => setNewItem((p) => ({ ...p, position: e.target.value }))}
+                                                >
+                                                    <option value="footer">Footer Main</option>
+                                                    <option value="footer_company">Footer Company</option>
+                                                    <option value="footer_links">Footer Quick Links</option>
+                                                </select>
+                                            </div>
                                             <div className="space-y-1.5">
                                                 <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Column (Parent)</Label>
                                                 <select
@@ -611,7 +676,7 @@ export default function DashboardFooterPage() {
                                                 >
                                                     <option value="">Root Level (Column Header)</option>
                                                     {topLevelItems.map((i) => (
-                                                        <option key={i.id} value={i.id}>Under: {i.label}</option>
+                                                        <option key={i.id} value={i.id}>[{i.position.replace('footer_', '')}] {i.label}</option>
                                                     ))}
                                                 </select>
                                             </div>

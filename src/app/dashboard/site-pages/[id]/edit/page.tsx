@@ -25,7 +25,22 @@ import { getIcon } from "@/lib/icons";
 // ── Actual Frontend Card Components for High Fidelity Preview ──
 
 // Story Card Component - Matching frontend/src/components/cards/StoryCard.tsx
-function PreviewStoryCard({ slug, title, thumbnail, category, categorySlug, city, citySlug, publishDate, featured, isFeatured, og_image, excerpt }: any) {
+interface PreviewStoryCardProps {
+    slug: string;
+    title: string;
+    thumbnail?: string;
+    category?: string;
+    categorySlug?: string;
+    city?: string;
+    citySlug?: string;
+    publishDate?: string;
+    featured?: boolean;
+    isFeatured?: boolean;
+    og_image?: string;
+    excerpt?: string;
+}
+
+function PreviewStoryCard({ slug, title, thumbnail, category, categorySlug, city, citySlug, publishDate, featured, isFeatured, og_image, excerpt }: PreviewStoryCardProps) {
     const thumbnailSrc = getSafeImageSrc(thumbnail || og_image);
     const isSvgThumbnail = thumbnailSrc.toLowerCase().endsWith(".svg");
     const isFeaturedCard = featured || isFeatured;
@@ -33,10 +48,11 @@ function PreviewStoryCard({ slug, title, thumbnail, category, categorySlug, city
     if (isFeaturedCard) {
         return (
             <div className="card-editorial relative overflow-hidden aspect-[16/10] md:aspect-[2/1] group rounded-xl">
-                <img
+                <Image
                     src={thumbnailSrc}
                     alt={title}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
@@ -57,10 +73,11 @@ function PreviewStoryCard({ slug, title, thumbnail, category, categorySlug, city
     return (
         <div className="h-full flex flex-col group relative bg-transparent transition-all duration-300">
             <div className="relative aspect-[16/9] overflow-hidden rounded-xl mb-3 shadow-sm group-hover:shadow-md transition-shadow">
-                <img
+                <Image
                     src={thumbnailSrc}
                     alt={title}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </div>
@@ -89,7 +106,21 @@ function PreviewStoryCard({ slug, title, thumbnail, category, categorySlug, city
 }
 
 // Startup Card Component - Matching frontend/src/components/cards/StartupCard.tsx
-function PreviewStartupCard({ slug, name, tagline, logo, category, city, stage, funding_stage, team_size = "100+", og_image, is_featured }: any) {
+interface PreviewStartupCardProps {
+    slug: string;
+    name: string;
+    tagline?: string;
+    logo?: string;
+    category?: any;
+    city?: any;
+    stage?: string;
+    funding_stage?: string;
+    team_size?: string;
+    og_image?: string;
+    is_featured?: boolean;
+}
+
+function PreviewStartupCard({ slug, name, tagline, logo, category, city, stage, funding_stage, team_size = "100+", og_image, is_featured }: PreviewStartupCardProps) {
     const displayCategory = typeof category === 'object' ? category.name : category;
     const displayCity = typeof city === 'object' ? city.name : city;
     const logoSrc = getSafeImageSrc(logo || og_image);
@@ -111,10 +142,11 @@ function PreviewStartupCard({ slug, name, tagline, logo, category, city, stage, 
             <div className="flex gap-2.5 mb-2.5 relative z-20">
                 <div className="w-9 h-9 rounded-lg overflow-hidden bg-white border border-zinc-100 flex-shrink-0 relative flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow group-hover:scale-105 duration-300">
                     {logo || og_image ? (
-                        <img
+                        <Image
                             src={logoSrc}
                             alt={`${name} logo`}
-                            className="w-full h-full object-contain p-1.5"
+                            fill
+                            className="object-contain p-1.5"
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center bg-zinc-50 text-zinc-400 font-bold text-sm">
@@ -157,7 +189,17 @@ function PreviewStartupCard({ slug, name, tagline, logo, category, city, stage, 
 }
 
 // Category Card Component - Matching frontend/src/components/cards/CategoryCard.tsx
-function PreviewCategoryCard({ slug, name, icon, startupCount, storyCount = 0, description, variant = "card" }: any) {
+interface PreviewCategoryCardProps {
+    slug: string;
+    name: string;
+    icon?: any;
+    startupCount: number;
+    storyCount?: number;
+    description?: string;
+    variant?: "card" | "banner";
+}
+
+function PreviewCategoryCard({ slug, name, icon, startupCount, storyCount = 0, description, variant = "card" }: PreviewCategoryCardProps) {
     const CATEGORY_STYLES: Record<string, { bg: string; text: string; icon: string }> = {
         "fintech": { bg: "bg-[#E6F4F1]", text: "text-[#006953]", icon: "text-[#00A884]" },
         "saas": { bg: "bg-[#E8F0FE]", text: "text-[#174EA6]", icon: "text-[#1A73E8]" },
@@ -215,16 +257,26 @@ function PreviewCategoryCard({ slug, name, icon, startupCount, storyCount = 0, d
 }
 
 // City Card Component - Matching frontend/src/components/cards/CityCard.tsx
-function PreviewCityCard({ slug, name, image, startupCount, storyCount, tier }: any) {
+interface PreviewCityCardProps {
+    slug: string;
+    name: string;
+    image?: string;
+    startupCount: number;
+    storyCount?: number;
+    tier?: string | number;
+}
+
+function PreviewCityCard({ slug, name, image, startupCount, storyCount, tier }: PreviewCityCardProps) {
     const imageSrc = getSafeImageSrc(image);
     const formattedStartupCount = (startupCount || 0).toLocaleString('en-IN');
 
     return (
         <div className="relative overflow-hidden rounded-xl w-full h-40 transition-all duration-300 hover:shadow-xl hover:scale-[1.02] group">
-            <img
+            <Image
                 src={imageSrc}
                 alt={name}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                fill
+                className="object-cover transition-transform duration-700 group-hover:scale-110"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 

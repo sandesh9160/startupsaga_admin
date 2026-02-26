@@ -18,7 +18,7 @@ export function DashboardLayoutWrapper({ children, initialNav = [] }: DashboardL
     const pathname = usePathname();
 
     return (
-        <SidebarProvider defaultOpen={true}>
+        <SidebarProvider defaultOpen={true} className="admin-shell">
             {/* AppSidebar renders as a Sheet (offcanvas) on mobile, fixed sidebar on desktop */}
             <AppSidebar initialNav={initialNav} />
 

@@ -12,26 +12,26 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-function toArray(data: any): any[] {
+function toArray(data: unknown): Record<string, unknown>[] {
   if (Array.isArray(data)) return data;
-  return data?.results || [];
+  return (data as { results?: Record<string, unknown>[] })?.results || [];
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  let stories: any[] = [];
-  let startups: any[] = [];
-  let categories: any[] = [];
-  let cities: any[] = [];
-  let pages: any[] = [];
+  let stories: Record<string, unknown>[] = [];
+  let startups: Record<string, unknown>[] = [];
+  let categories: Record<string, unknown>[] = [];
+  let cities: Record<string, unknown>[] = [];
+  let pages: Record<string, unknown>[] = [];
 
   try {
     const [storiesRes, startupsRes, categoriesRes, citiesRes, pagesRes] = await Promise.all([
-      fetchJson<any>(`${API_BASE_URL}/stories/`),
-      fetchJson<any>(`${API_BASE_URL}/startups/`),
-      fetchJson<any[]>(`${API_BASE_URL}/categories/`),
-      fetchJson<any[]>(`${API_BASE_URL}/cities/`),
-      fetchJson<any[]>(`${API_BASE_URL}/pages/`),
+      fetchJson<unknown>(`${API_BASE_URL}/stories/`),
+      fetchJson<unknown>(`${API_BASE_URL}/startups/`),
+      fetchJson<Record<string, unknown>[]>(`${API_BASE_URL}/categories/`),
+      fetchJson<Record<string, unknown>[]>(`${API_BASE_URL}/cities/`),
+      fetchJson<Record<string, unknown>[]>(`${API_BASE_URL}/pages/`),
     ]);
     stories = toArray(storiesRes);
     startups = toArray(startupsRes);
@@ -51,29 +51,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/submit`, lastModified: now },
   ];
 
-  const storyPages = stories.map((s: any) => ({
+  const storyPages = stories.map((s: Record<string, unknown>) => ({
     url: `${SITE_URL}/stories/${s.slug}`,
-    lastModified: s.updated_at ? new Date(s.updated_at) : now,
+    lastModified: s.updated_at ? new Date(s.updated_at as string) : now,
   }));
 
-  const startupPages = startups.map((s: any) => ({
+  const startupPages = startups.map((s: Record<string, unknown>) => ({
     url: `${SITE_URL}/startups/${s.slug}`,
-    lastModified: s.updated_at ? new Date(s.updated_at) : now,
+    lastModified: s.updated_at ? new Date(s.updated_at as string) : now,
   }));
 
-  const categoryPages = categories.map((c: any) => ({
+  const categoryPages = categories.map((c: Record<string, unknown>) => ({
     url: `${SITE_URL}/categories/${c.slug}`,
     lastModified: now,
   }));
 
-  const cityPages = cities.map((c: any) => ({
+  const cityPages = cities.map((c: Record<string, unknown>) => ({
     url: `${SITE_URL}/cities/${c.slug}`,
     lastModified: now,
   }));
 
-  const pagePages = pages.map((p: any) => ({
+  const pagePages = pages.map((p: Record<string, unknown>) => ({
     url: `${SITE_URL}/${p.slug}`,
-    lastModified: p.updated_at ? new Date(p.updated_at) : now,
+    lastModified: p.updated_at ? new Date(p.updated_at as string) : now,
   }));
 
   return [

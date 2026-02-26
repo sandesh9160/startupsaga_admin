@@ -10,7 +10,10 @@ import {
   Category,
   Submission,
   AIPrompt,
-  PaginatedResponse
+  MediaItem,
+  PaginatedResponse,
+  Page,
+  LayoutSettings
 } from "@/types";
 
 export type {
@@ -21,7 +24,10 @@ export type {
   Category,
   Submission,
   AIPrompt,
-  PaginatedResponse
+  MediaItem,
+  PaginatedResponse,
+  Page,
+  LayoutSettings
 };
 
 /**
@@ -46,8 +52,9 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     const method = (options.method || "GET").toUpperCase();
     const isSafeMethod = ["GET", "HEAD", "OPTIONS", "TRACE"].includes(method);
 
+    const isFormData = options.body instanceof FormData;
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...((options.headers as Record<string, string>) || {}),
     };
 
@@ -243,19 +250,19 @@ export const categoriesApi = {
 
 export const pagesApi = {
   /** Get all pages */
-  list: () => fetchList<any>("/pages/"),
+  list: () => fetchList<Page>("/pages/"),
 
   /** Get single page by ID */
   get: (id: string | number) => fetchAPI(`/pages/${id}/`),
 
   /** Create a new page */
-  create: (data: any) => fetchAPI("/pages/create/", {
+  create: (data: Partial<Page>) => fetchAPI("/pages/create/", {
     method: "POST",
     body: JSON.stringify(data),
   }),
 
   /** Update an existing page */
-  update: (id: string | number, data: any) => fetchAPI(`/pages/${id}/update/`, {
+  update: (id: string | number, data: Partial<Page>) => fetchAPI(`/pages/${id}/update/`, {
     method: "PUT",
     body: JSON.stringify(data),
   }),
@@ -298,6 +305,26 @@ export const promptsApi = {
 };
 
 /* =========================================================
+   MEDIA MANAGEMENT
+   ========================================================= */
+
+export const mediaApi = {
+  /** Get all media items */
+  list: () => fetchList<MediaItem>("/media/"),
+
+  /** Upload a file */
+  upload: (data: FormData) => fetchAPI("/media/upload/", {
+    method: "POST",
+    body: data,
+  }),
+
+  /** Delete a media item */
+  delete: (id: number) => fetchAPI(`/media/${id}/delete/`, {
+    method: "DELETE",
+  }),
+};
+
+/* =========================================================
    SYSTEM CONTENT & CONFIG
    ========================================================= */
 
@@ -309,18 +336,18 @@ export const systemApi = {
   getLayout: () => fetchAPI("/layout-settings/"),
 
   /** Update global layout settings */
-  updateLayout: (data: Record<string, any>) => fetchAPI("/layout-settings/update/", {
+  updateLayout: (data: Partial<LayoutSettings> | FormData) => fetchAPI("/layout-settings/update/", {
     method: "POST",
-    body: JSON.stringify(data),
+    body: data instanceof FormData ? data : JSON.stringify(data),
   }),
 
   /** Get SEO settings */
   getSEO: () => fetchAPI("/seo-settings/"),
 
   /** Update SEO settings */
-  updateSEO: (data: Record<string, any>) => {
+  updateSEO: (data: Record<string, unknown>) => {
     // Remove undefined or null values
-    const cleanedData: Record<string, any> = {};
+    const cleanedData: Record<string, unknown> = {};
 
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -383,8 +410,10 @@ export const getPrompts = systemApi.getPrompts;
 export const createPrompt = promptsApi.create;
 export const updatePrompt = promptsApi.update;
 export const deletePrompt = promptsApi.delete;
-export const getSections = (page: string) => fetchList<any>(`/sections/?page=${page}`);
-export const getTrendingStories = () => fetchList<any>("/stories/trending/");
+export const applyPrompts = promptsApi.applyAll;
+export const getPromptDefaults = () => fetchList<Record<string, unknown>>("/prompts/defaults/");
+export const getSections = (page: string) => fetchList<Record<string, unknown>>(`/sections/?page=${page}`);
+export const getTrendingStories = () => fetchList<Story>("/stories/trending/");
 export const getCitiesList = hubsApi.list;
 export const getCityBySlug = hubsApi.get;
 export const createCity = hubsApi.create;
@@ -408,7 +437,7 @@ export const updateCategory = categoriesApi.update;
 export const getCategoryStats = async () => {
   const categories = await categoriesApi.list();
   return categories
-    .map((c: any) => ({ name: c.name, value: c.startupCount || 0 }))
+    .map((c: Category) => ({ name: c.name, value: c.startupCount || 0 }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 5); // Top 5 categories
 };
@@ -416,19 +445,19 @@ export const getCategoryStats = async () => {
 export const getCityStats = async () => {
   const cities = await hubsApi.list();
   return cities
-    .map((c: any) => ({ name: c.name, value: c.startupCount || 0 }))
+    .map((c: Hub) => ({ name: c.name, value: c.startupCount || 0 }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 5); // Top 5 cities
 };
 
-export const getActivityStats = () => fetchList<any>("/activity-stats/");
+export const getActivityStats = () => fetchList<Record<string, unknown>>("/activity-stats/");
 
 export const deleteCategory = categoriesApi.delete;
 export const getPages = pagesApi.list;
 export const getPageById = pagesApi.get;
 
 /** Paginated stories with filters */
-export const getStoriesPage = (params?: any) => {
+export const getStoriesPage = (params?: Record<string, string | number | boolean | undefined>): Promise<PaginatedResponse<Story>> => {
   const cleanParams: Record<string, string> = {};
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -442,7 +471,7 @@ export const getStoriesPage = (params?: any) => {
 };
 
 /** Paginated startups with filters */
-export const getStartupsPage = (params?: any): Promise<PaginatedResponse<Startup>> => {
+export const getStartupsPage = (params?: Record<string, string | number | boolean | undefined>): Promise<PaginatedResponse<Startup>> => {
   const cleanParams: Record<string, string> = {};
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -456,7 +485,7 @@ export const getStartupsPage = (params?: any): Promise<PaginatedResponse<Startup
 };
 
 /** Paginated hubs with filters */
-export const getHubsPage = (params?: any): Promise<PaginatedResponse<Hub>> => {
+export const getHubsPage = (params?: Record<string, string | number | boolean | undefined>): Promise<PaginatedResponse<Hub>> => {
   const cleanParams: Record<string, string> = {};
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -470,7 +499,7 @@ export const getHubsPage = (params?: any): Promise<PaginatedResponse<Hub>> => {
 };
 
 /** Paginated submissions with filters */
-export const getSubmissionsPage = (params?: any): Promise<PaginatedResponse<Submission>> => {
+export const getSubmissionsPage = (params?: Record<string, string | number | boolean | undefined>): Promise<PaginatedResponse<Submission>> => {
   const cleanParams: Record<string, string> = {};
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -496,7 +525,7 @@ export const generateSEO = (data: { title: string; description: string; content:
 
 // Submission helpers
 export const getSubmissionDetail = (id: number) => fetchAPI(`/submissions/${id}/`);
-export const updateSubmission = (id: number, data: any) => fetchAPI(`/submissions/${id}/update/`, {
+export const updateSubmission = (id: number, data: Partial<Submission>) => fetchAPI(`/submissions/${id}/update/`, {
   method: "PUT",
   body: JSON.stringify(data),
 });
@@ -511,23 +540,23 @@ export const deleteSubmission = (id: number) => fetchAPI(`/submissions/${id}/del
 
 
 /** Submit a new startup for review */
-export const submitStartup = async (data: any) => {
+export const submitStartup = async (data: Partial<Submission>) => {
   return fetchAPI('/submissions/create/', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 };
 /** Get newsletter subscribers */
-export const getNewsletterSubscribers = () => fetchList<any>("/newsletter/list/");
+export const getNewsletterSubscribers = () => fetchList<Record<string, unknown>>("/newsletter/list/");
 
 export const newsletterTemplatesApi = {
-  list: () => fetchList<any>("/newsletter/templates/"),
+  list: () => fetchList<Record<string, unknown>>("/newsletter/templates/"),
   get: (id: number) => fetchAPI(`/newsletter/templates/${id}/`),
-  create: (data: any) => fetchAPI("/newsletter/templates/create/", {
+  create: (data: Record<string, unknown>) => fetchAPI("/newsletter/templates/create/", {
     method: "POST",
     body: JSON.stringify(data),
   }),
-  update: (id: number, data: any) => fetchAPI(`/newsletter/templates/${id}/update/`, {
+  update: (id: number, data: Record<string, unknown>) => fetchAPI(`/newsletter/templates/${id}/update/`, {
     method: "POST",
     body: JSON.stringify(data),
   }),

@@ -8,20 +8,20 @@ import {
     Edit,
     Trash2,
     Layers,
-    TrendingUp,
-    ChevronDown,
-    MoreVertical,
-    CheckCircle2,
-    Zap,
-    ArrowUpRight,
-    PieChart
+    // TrendingUp,
+    // ChevronDown,
+    // MoreVertical,
+    // CheckCircle2,
+    // Zap,
+    // ArrowUpRight,
+    // PieChart
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+// import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getCategories, updateCategory, deleteCategory, Category } from "@/lib/api";
-import { cn } from "@/lib/utils";
+// import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { getIcon } from "@/lib/icons";
 import {
@@ -65,7 +65,7 @@ export default function CategoriesPage() {
             await deleteCategory(category.slug);
             await loadCategories();
             toast.success("Category removed");
-        } catch (err: any) {
+        } catch {
             toast.error("Operation failed");
         }
     };

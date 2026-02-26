@@ -154,13 +154,13 @@ const navGroups: NavGroup[] = [
         ],
     },
     {
-        label: "System",
+        label: "Settings",
         items: [
             {
                 title: "Settings",
                 href: "/dashboard/settings",
                 icon: Settings,
-                iconBg: "bg-slate-500",
+                iconBg: "bg-indigo-600",
                 iconColor: "text-white",
             },
         ],
@@ -262,7 +262,31 @@ export function AppSidebar({
                             </SidebarMenu>
                         </div>
                     ))}
+
+                    {/* Dynamic DB-driven nav items if any */}
+                    {_initialNav && _initialNav.length > 0 && (
+                        <div className="mb-5">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-2 mb-1.5">
+                                Custom
+                            </p>
+                            <SidebarMenu className="gap-0.5">
+                                {_initialNav.map((item: any) => (
+                                    <SidebarMenuItem key={item.id}>
+                                        <SidebarMenuButton asChild className="h-10 px-2 rounded-xl transition-all duration-150 w-full hover:bg-slate-50">
+                                            <Link href={item.url} className="flex items-center gap-3" onClick={handleNavClick}>
+                                                <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 opacity-85">
+                                                    <Globe size={14} className="text-slate-600" />
+                                                </div>
+                                                <span className="text-[13px] font-medium text-slate-600 flex-1">{item.label}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </div>
+                    )}
                 </SidebarContent>
+
             </ScrollArea>
 
             {/* ── Footer ── */}

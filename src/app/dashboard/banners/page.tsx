@@ -11,14 +11,13 @@ import {
     Image as ImageIcon,
     ExternalLink,
     Eye,
-    EyeOff,
-    GripVertical,
-    Sparkles
+    EyeOff
 } from "lucide-react";
 import { fetchAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import Image from "next/image";
 import { BannerEditor } from "@/components/admin/BannerEditor";
 import {
     DropdownMenu,
@@ -28,17 +27,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function BannersPage() {
-    const [banners, setBanners] = useState<any[]>([]);
+    const [banners, setBanners] = useState<Record<string, unknown>[]>([]);
     const [loading, setLoading] = useState(true);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
-    const [editingBanner, setEditingBanner] = useState<any>(null);
+    const [editingBanner, setEditingBanner] = useState<Record<string, unknown> | null>(null);
 
     const loadBanners = async () => {
         setLoading(true);
         try {
             const data = await fetchAPI("/sections/?page=homepage");
             // Filter only banner types
-            setBanners(data.filter((s: any) => s.section_type === 'banner' || s.section_type === 'hero_banner'));
+            setBanners(data.filter((s: Record<string, unknown>) => s.section_type === 'banner' || s.section_type === 'hero_banner'));
         } catch (error) {
             console.error("Failed to load banners", error);
             toast.error("Failed to load banners");
@@ -64,12 +63,12 @@ export default function BannersPage() {
             } else {
                 toast.error("Deletion failed");
             }
-        } catch (error) {
+        } catch {
             toast.error("Error deleting banner");
         }
     };
 
-    const handleToggleStatus = async (banner: any) => {
+    const handleToggleStatus = async (banner: Record<string, unknown>) => {
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sections/${banner.id}/update/`, {
                 method: 'PATCH',
@@ -80,7 +79,7 @@ export default function BannersPage() {
                 toast.success(`Banner ${!banner.is_active ? 'enabled' : 'disabled'}`);
                 loadBanners();
             }
-        } catch (error) {
+        } catch {
             toast.error("Status update failed");
         }
     };
@@ -113,15 +112,17 @@ export default function BannersPage() {
             ) : (
                 <div className="grid gap-4">
                     {banners.map((banner, index) => (
-                        <Card key={banner.id || index} className="overflow-hidden group border-zinc-200/60 shadow-sm hover:shadow-md transition-all">
+                        <Card key={(banner.id as string | number) || index} className="overflow-hidden group border-zinc-200/60 shadow-sm hover:shadow-md transition-all">
                             <div className="flex flex-col md:flex-row md:items-center">
                                 {/* Preview Thumbnail */}
                                 <div className="w-full md:w-48 h-32 bg-zinc-100 overflow-hidden relative shrink-0">
                                     {banner.image ? (
-                                        <img
-                                            src={banner.image.startsWith('http') ? banner.image : `${process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000'}${banner.image}`}
+                                        <Image
+                                            src={(banner.image as string).startsWith('http') ? (banner.image as string) : `${process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000'}${(banner.image as string)}`}
                                             alt=""
-                                            className="w-full h-full object-cover"
+                                            fill
+                                            className="object-cover"
+                                            unoptimized
                                         />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200">
@@ -140,10 +141,10 @@ export default function BannersPage() {
                                     <div className="flex items-start justify-between">
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-[#FF5722]">{banner.subtitle || "Promotion"}</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-[#FF5722]">{(banner.subtitle as string) || "Promotion"}</span>
                                             </div>
-                                            <h3 className="font-bold text-lg text-zinc-900 leading-tight">{banner.title}</h3>
-                                            <p className="text-xs text-zinc-500 line-clamp-1 max-w-md">{banner.description}</p>
+                                            <h3 className="font-bold text-lg text-zinc-900 leading-tight">{banner.title as string}</h3>
+                                            <p className="text-xs text-zinc-500 line-clamp-1 max-w-md">{banner.description as string}</p>
                                         </div>
 
                                         <div className="flex items-center gap-1">
@@ -178,7 +179,7 @@ export default function BannersPage() {
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem
                                                         className="text-rose-600 cursor-pointer flex items-center gap-2"
-                                                        onClick={() => handleDelete(banner.id)}
+                                                        onClick={() => handleDelete(banner.id as number)}
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" /> Delete Banner
                                                     </DropdownMenuItem>
@@ -190,10 +191,10 @@ export default function BannersPage() {
                                     <div className="mt-4 pt-4 border-t border-zinc-100 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                                         <div className="flex items-center gap-4">
                                             <span className="flex items-center gap-1.5 border-r pr-4">
-                                                Order: <span className="text-zinc-900">{banner.order}</span>
+                                                Order: <span className="text-zinc-900">{banner.order as number}</span>
                                             </span>
                                             <span className="flex items-center gap-1.5">
-                                                Link: <span className="text-blue-500 lowercase font-medium">{banner.link_url || "None"}</span>
+                                                Link: <span className="text-blue-500 lowercase font-medium">{(banner.link_url as string) || "None"}</span>
                                             </span>
                                         </div>
                                     </div>

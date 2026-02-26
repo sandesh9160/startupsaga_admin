@@ -6,20 +6,12 @@ import {
     Plus,
     Search,
     MapPin,
-    Building2,
-    FileText,
     Edit,
-    Trash2,
-    ChevronDown,
-    Globe,
-    ExternalLink
+    Trash2
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { getCities, deleteCity, Hub as City, getHubsPage, PaginatedResponse } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { deleteCity, Hub as City, getHubsPage, PaginatedResponse } from "@/lib/api";
 import { getSafeImageSrc } from "@/lib/images";
 import { toast } from "sonner";
 import { DashboardPagination } from "@/components/dashboard/Pagination";
@@ -79,7 +71,7 @@ export default function CitiesPage() {
             await deleteCity(city.slug);
             await loadCities();
             toast.success("City removed");
-        } catch (err: any) {
+        } catch {
             toast.error("Operation failed");
         }
     };

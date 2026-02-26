@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { API_BASE_URL } from "@/lib/api";
 
 export async function GET(request: Request) {
-    const cookieStore = await cookies();
+
 
     // Call backend to invalidate session
     try {
@@ -17,8 +17,12 @@ export async function GET(request: Request) {
                 "Content-Type": "application/json",
             },
         });
-    } catch (e: any) {
-        console.error("Backend logout failed:", e.message);
+    } catch (e: unknown) {
+        if (e instanceof Error) {
+            console.error("Backend logout failed:", e.message);
+        } else {
+            console.error("Backend logout failed:", e);
+        }
     }
 
     // Redirect to login page
@@ -43,8 +47,12 @@ export async function POST(request: Request) {
                 "Content-Type": "application/json",
             },
         });
-    } catch (e: any) {
-        console.error("Backend logout failed:", e.message);
+    } catch (e: unknown) {
+        if (e instanceof Error) {
+            console.error("Backend logout failed:", e.message);
+        } else {
+            console.error("Backend logout failed:", e);
+        }
     }
 
     const response = NextResponse.json({ success: true });
