@@ -30,6 +30,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const TIER_LABELS: Record<string, string> = {
     '1': 'Tier 1',
@@ -40,6 +50,7 @@ const TIER_LABELS: Record<string, string> = {
 export default function CitiesPage() {
     const router = useRouter();
     const [cities, setCities] = useState<City[]>([]);
+    const [cityToDelete, setCityToDelete] = useState<City | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [tierFilter, setTierFilter] = useState("all");
@@ -72,9 +83,12 @@ export default function CitiesPage() {
         }
     };
 
-    const handleDelete = async (city: City) => {
-        const ok = window.confirm(`Delete city: "${city.name}"?`);
-        if (!ok) return;
+    const handleDelete = (city: City) => {
+        setCityToDelete(city);
+    };
+
+    const confirmDelete = async (city: City) => {
+        setCityToDelete(null);
         try {
             await deleteCity(city.slug);
             await loadCities();
@@ -237,6 +251,31 @@ export default function CitiesPage() {
                     </div>
                 )}
             </div>
+
+            <AlertDialog open={!!cityToDelete} onOpenChange={(open) => !open && setCityToDelete(null)}>
+                <AlertDialogContent className="rounded-2xl border-zinc-100 shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-bold text-zinc-900 font-serif">
+                            Confirm Deletion
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-500 text-sm">
+                            Are you sure you want to delete <span className="font-bold text-zinc-900">"{cityToDelete?.name}"</span>?
+                            This will remove the city from the directory and unassign it from mapping.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-xl border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-all font-bold text-xs uppercase tracking-widest">
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => cityToDelete && confirmDelete(cityToDelete)}
+                            className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition-all font-bold text-xs uppercase tracking-widest px-6"
+                        >
+                            Confirm Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

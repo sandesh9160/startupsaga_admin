@@ -31,10 +31,21 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function CategoriesPage() {
     const router = useRouter();
     const [categories, setCategories] = useState<Category[]>([]);
+    const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [sortOrder, setSortOrder] = useState("name");
@@ -58,9 +69,12 @@ export default function CategoriesPage() {
         }
     };
 
-    const handleDelete = async (category: Category) => {
-        const ok = window.confirm(`Permanently delete category: "${category.name}"?`);
-        if (!ok) return;
+    const handleDelete = (category: Category) => {
+        setCategoryToDelete(category);
+    };
+
+    const confirmDelete = async (category: Category) => {
+        setCategoryToDelete(null);
         try {
             await deleteCategory(category.slug);
             await loadCategories();
@@ -212,6 +226,31 @@ export default function CategoriesPage() {
                     })}
                 </div>
             </div>
+
+            <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+                <AlertDialogContent className="rounded-2xl border-zinc-100 shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-bold text-zinc-900 font-serif">
+                            Delete Taxonomy
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-500 text-sm">
+                            Are you sure you want to delete <span className="font-bold text-zinc-900">"{categoryToDelete?.name}"</span>?
+                            This may affect startups and stories indexed under this category.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-xl border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-all font-bold text-xs uppercase tracking-widest">
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => categoryToDelete && confirmDelete(categoryToDelete)}
+                            className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition-all font-bold text-xs uppercase tracking-widest px-6"
+                        >
+                            Confirm Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

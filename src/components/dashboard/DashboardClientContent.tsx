@@ -143,7 +143,7 @@ export function DashboardClientContent({ initialCounts }: { initialCounts: any }
                         {/* Live clock */}
                         <div className="flex items-center gap-2 bg-white border border-zinc-200 rounded-xl px-3 py-2 shadow-sm">
                             <Clock size={13} className="text-zinc-400" />
-                            <span className="text-xs font-bold text-zinc-600 tabular-nums" suppressHydrationWarning>
+                            <span className="text-xs font-bold text-zinc-600" suppressHydrationWarning>
                                 {currentTime}
                             </span>
                         </div>
@@ -194,7 +194,7 @@ export function DashboardClientContent({ initialCounts }: { initialCounts: any }
                                         </div>
                                     </div>
                                     <div>
-                                        <h3 className={cn("text-3xl font-black tabular-nums", stat.valueText)} suppressHydrationWarning>
+                                        <h3 className={cn("text-3xl font-black", stat.valueText)} suppressHydrationWarning>
                                             {stat.value}
                                         </h3>
                                         <p className="text-xs font-semibold text-zinc-400 mt-1 uppercase tracking-wider">{stat.title}</p>
@@ -311,7 +311,7 @@ export function DashboardClientContent({ initialCounts }: { initialCounts: any }
                                             </span>
                                         )}
                                     </div>
-                                    <h4 className="text-2xl font-black text-white tabular-nums" suppressHydrationWarning>
+                                    <h4 className="text-2xl font-black text-white" suppressHydrationWarning>
                                         {counts.submissions}
                                     </h4>
                                     <p className="text-purple-200 text-xs font-medium mb-4">Submissions pending review</p>

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { RichTextEditor } from "@/components/dashboard/RichTextEditor";
+import { getSafeImageSrc } from "@/lib/images";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +36,8 @@ import {
     Image as ImageIcon,
     ExternalLink,
     Briefcase,
+    List,
+    Lightbulb
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -42,6 +46,7 @@ import {
     startupsApi,
     getCategories,
     getHubs,
+    getSubmissionDetail,
     Category,
     Hub
 } from "@/lib/api";
@@ -77,8 +82,12 @@ const SECTORS = [
 
 const TEAM_SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
 
-export default function NewStartupPage() {
+function NewStartupForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const submissionId = searchParams.get('submission');
+
+    const [submissionDetails, setSubmissionDetails] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -108,6 +117,8 @@ export default function NewStartupPage() {
         meta_title: "",
         meta_description: "",
         meta_keywords: "",
+        excerpt: "", // TL;DR
+        content: "", // Startup Journey Rich Text
     });
 
     const [tagInput, setTagInput] = useState("");
@@ -124,6 +135,30 @@ export default function NewStartupPage() {
         };
         loadData();
     }, []);
+
+    useEffect(() => {
+        if (submissionId) {
+            setIsLoading(true);
+            getSubmissionDetail(parseInt(submissionId))
+                .then((sub: any) => {
+                    setSubmissionDetails(sub);
+                    setFormData(prev => ({
+                        ...prev,
+                        name: sub.startup_name || prev.name,
+                        slug: prev.slug || (sub.startup_name ? sub.startup_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : ""),
+                        website_url: sub.website || prev.website_url,
+                        founder_name: sub.founder_name || prev.founder_name,
+                        excerpt: sub.description || prev.excerpt,
+                        content: sub.full_story || prev.content,
+                        category: sub.category || prev.category,
+                        logo: sub.logo || prev.logo
+                    }));
+                    toast.info("Submission data pre-filled");
+                })
+                .catch(err => console.error("Failed to fetch submission", err))
+                .finally(() => setIsLoading(false));
+        }
+    }, [submissionId]);
 
     const handleGenerateContent = async () => {
         if (!formData.name) {
@@ -225,6 +260,9 @@ export default function NewStartupPage() {
                 funding_stage: formData.stage,
                 industry_tags: formData.industry_tags.length > 0 ? formData.industry_tags : (formData.sector ? [formData.sector] : []),
             };
+            if (submissionId) {
+                (cleanData as any).submission_id = submissionId;
+            }
             await startupsApi.create(cleanData);
             toast.success("Startup created successfully");
             router.push("/dashboard/startups");
@@ -236,28 +274,76 @@ export default function NewStartupPage() {
         }
     };
 
+    const headingRegex = /<(h[2-4])[^>]*>([\s\S]*?)<\/\1>/gi;
+    const tocContent = formData.content || '';
+    const tocMatches = [...tocContent.matchAll(headingRegex)];
+    let h2Count = 0;
+    const tocItems = tocMatches.map((match, index) => {
+        const fullMatch = match[0];
+        const tag = match[1].toLowerCase();
+        let title = match[2].replace(/<[^>]+>/g, '').trim();
+        title = title.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
+        if (tag === 'h2') h2Count++;
+        return {
+            id: tag === 'h2' ? h2Count : '',
+            tag,
+            title,
+            startIndex: match.index!,
+            fullMatch,
+        };
+    });
+
+    const handleRenameHeading = (startIndex: number, matchString: string, oldTitle: string, newTitle: string) => {
+        if (!newTitle.trim() || oldTitle === newTitle) return;
+        const beforeMatch = formData.content.substring(0, startIndex);
+        const afterMatch = formData.content.substring(startIndex + matchString.length);
+        const newMatchString = matchString.replace(oldTitle, newTitle.trim());
+        setFormData(prev => ({ ...prev, content: beforeMatch + newMatchString + afterMatch }));
+    };
+
+    const handleDeleteHeading = (startIndex: number, matchString: string) => {
+        const beforeMatch = formData.content.substring(0, startIndex);
+        const afterMatch = formData.content.substring(startIndex + matchString.length);
+        setFormData(prev => ({ ...prev, content: beforeMatch + afterMatch }));
+    };
+
     return (
         <div className="admin-page space-y-6 pb-12">
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 rounded-xl bg-secondary/50 hover:bg-secondary border border-border/40 transition-all active:scale-95"
-                    asChild
-                >
-                    <Link href="/dashboard/startups">
-                        <ChevronLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-                <div>
-                    <h1 className="text-xl font-black uppercase tracking-tight text-foreground flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-primary" />
-                        New Startup
-                    </h1>
-                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-                        Expand the ecosystem with a new venture
-                    </p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-zinc-50 border border-zinc-100 shadow-sm mb-6">
+                <div className="flex items-center gap-4">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl bg-white border border-zinc-200 shadow-sm transition-all active:scale-95"
+                        asChild
+                    >
+                        <Link href="/dashboard/startups">
+                            <ChevronLeft className="h-5 w-5" />
+                        </Link>
+                    </Button>
+                    <div className="flex flex-col">
+                        <h1 className="text-xl font-bold tracking-tight text-zinc-900 mt-1">Publish Startup</h1>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 px-4 rounded-xl text-[10px] font-bold uppercase tracking-widest border-zinc-200 hover:bg-white"
+                        onClick={() => window.open(process.env.NEXT_PUBLIC_SITE_URL + '/startups', '_blank')}
+                    >
+                        <Eye className="h-3.5 w-3.5 mr-1.5" /> View Directory
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="h-9 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold uppercase tracking-widest shadow-md shadow-indigo-200 transition-all active:scale-95"
+                    >
+                        {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                        Commit Venture
+                    </Button>
                 </div>
             </div>
 
@@ -356,13 +442,12 @@ export default function NewStartupPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Description / Value Prop</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Excerpt (TL;DR)</Label>
                                 <Textarea
-                                    placeholder="Tell the world what they do..."
-                                    className="min-h-[100px] px-3 py-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 resize-none leading-relaxed transition-all"
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    required
+                                    placeholder="Brief summary that appears at the top..."
+                                    className="min-h-[100px] px-3 py-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 resize-none leading-relaxed transition-all text-sm"
+                                    value={formData.excerpt !== undefined ? formData.excerpt : formData.description}
+                                    onChange={(e) => setFormData({ ...formData, excerpt: e.target.value, description: e.target.value })}
                                 />
                             </div>
 
@@ -433,6 +518,89 @@ export default function NewStartupPage() {
                             </div>
                         </div>
                     </motion.div>
+
+                    {/* Submission Source (Moved to be along with Journey) */}
+                    {submissionDetails && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="admin-surface-compact overflow-hidden border border-blue-200/60 shadow-sm bg-blue-50/50 rounded-2xl mt-6"
+                        >
+                            <div className="p-4 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-white flex items-center gap-2">
+                                <Lightbulb className="h-4 w-4 text-blue-500" />
+                                <span className="text-xs font-black text-blue-500 uppercase tracking-widest">Submission Source</span>
+                            </div>
+                            <div className="p-5 space-y-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-12 w-12 rounded-xl bg-white border border-blue-100 flex items-center justify-center p-2 shadow-sm">
+                                        {submissionDetails.logo ? (
+                                            <img src={getSafeImageSrc(submissionDetails.logo)} alt="Logo" className="w-full h-full object-contain" />
+                                        ) : (
+                                            <Building2 className="h-6 w-6 text-blue-300" />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-blue-900">{submissionDetails.startup_name}</h4>
+                                        <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">{submissionDetails.category}</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3 pt-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Founder</Label>
+                                            <div className="text-[11px] font-bold text-blue-800">{submissionDetails.founder_name}</div>
+                                        </div>
+                                        <div>
+                                            <Label className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Email</Label>
+                                            <div className="text-[11px] font-bold text-blue-800 truncate" title={submissionDetails.email}>{submissionDetails.email}</div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <Label className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Website</Label>
+                                        <div className="text-[11px] font-bold text-blue-600 truncate underline cursor-pointer hover:text-blue-800 transition-colors">
+                                            <a href={submissionDetails.website} target="_blank" rel="noopener noreferrer">{submissionDetails.website || '—'}</a>
+                                        </div>
+                                    </div>
+                                    {submissionDetails.description && (
+                                        <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm">
+                                            <Label className="text-[9px] font-black text-blue-300 uppercase tracking-widest mb-1 block">Quick Pitch</Label>
+                                            <p className="text-[11px] font-medium text-blue-700 leading-relaxed max-h-20 overflow-y-auto">
+                                                {submissionDetails.description}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {submissionDetails.full_story && (
+                                        <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm">
+                                            <Label className="text-[9px] font-black text-blue-300 uppercase tracking-widest mb-1 block">Full Story</Label>
+                                            <p className="text-[11px] font-medium text-blue-700 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-wrap">
+                                                {submissionDetails.full_story}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Startup Journey Editor */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
+                        <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
+                                    <Sparkles className="h-3 w-3 text-white" />
+                                </div>
+                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Startup Journey</span>
+                            </div>
+                        </div>
+                        <div className="p-0">
+                            <RichTextEditor
+                                content={formData.content}
+                                onChange={(val) => setFormData({ ...formData, content: val })}
+                                placeholder="Write the full startup journey..."
+                            />
+                        </div>
+                    </div>
 
                     {/* Business Stats Card */}
                     <motion.div
@@ -725,6 +893,71 @@ export default function NewStartupPage() {
                         </div>
                     </motion.div>
 
+                    {/* Content Outline Card */}
+                    <motion.div
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.22 }}
+                        className="admin-surface-compact overflow-hidden border border-border/40 shadow-sm bg-white rounded-2xl"
+                    >
+                        <div className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                                    <List className="h-3 w-3 text-indigo-600" />
+                                </div>
+                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
+                                    Content Outline
+                                </span>
+                            </div>
+                        </div>
+                        <div className="p-5">
+                            {tocItems.length > 0 ? (
+                                <ol className="space-y-1.5">
+                                    {tocItems.map((item) => (
+                                        <li key={`${item.startIndex}-${item.id}`} className="flex items-center gap-2 group/item">
+                                            <span className={cn(
+                                                "text-[9px] font-black leading-none min-w-[20px] shrink-0",
+                                                item.tag === 'h2' ? "text-indigo-500/50" : "text-zinc-300 ml-1.5"
+                                            )}>
+                                                {item.tag === 'h2' ? `${item.id}.` : `•`}
+                                            </span>
+                                            <Input
+                                                defaultValue={item.title}
+                                                onBlur={(e) => handleRenameHeading(item.startIndex, item.fullMatch, item.title, e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        (e.target as HTMLInputElement).blur();
+                                                    }
+                                                }}
+                                                className={cn(
+                                                    "h-8 border-transparent bg-transparent hover:bg-zinc-50 focus:bg-white focus:border-zinc-200 rounded-lg px-2 transition-all flex-1",
+                                                    item.tag === 'h2' ? "text-xs font-bold text-zinc-700" : "text-[11px] font-medium text-zinc-500"
+                                                )}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteHeading(item.startIndex, item.fullMatch)}
+                                                className="opacity-0 group-hover/item:opacity-100 h-6 w-6 flex items-center justify-center rounded-md text-zinc-400 hover:text-rose-500 hover:bg-rose-50 transition-all shrink-0"
+                                                title="Remove this section"
+                                            >
+                                                <Trash2 className="h-3 w-3" />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ol>
+                            ) : (
+                                <div className="py-6 text-center border-2 border-dashed border-zinc-100 rounded-2xl bg-zinc-50/50">
+                                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">No sections yet</p>
+                                    <p className="text-[9px] text-zinc-400 mt-1">
+                                        Headings will appear here
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+
+
+
                     {/* SEO Preview Card */}
                     <motion.div
                         initial={{ opacity: 0, x: 10 }}
@@ -802,5 +1035,17 @@ export default function NewStartupPage() {
                 </div>
             </form>
         </div>
+    );
+}
+
+export default function NewStartupPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center p-20">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
+            <NewStartupForm />
+        </Suspense>
     );
 }

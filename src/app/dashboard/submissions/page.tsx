@@ -7,7 +7,7 @@ import {
     Clock,
     CheckCircle2,
     XCircle,
-    Building2,
+    // Building2,
     Mail,
     Inbox,
     Trash2,
@@ -42,10 +42,20 @@ import {
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
+    // DialogHeader,
     DialogTitle,
-    DialogFooter,
+    // DialogFooter,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { getSubmissions, updateSubmissionStatus, deleteSubmission, updateSubmission, getSubmissionsPage, PaginatedResponse, Submission } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -56,6 +66,7 @@ import { DashboardPagination } from "@/components/dashboard/Pagination";
 export default function SubmissionsPage() {
     const router = useRouter();
     const [submissions, setSubmissions] = useState<any[]>([]);
+    const [submissionToDelete, setSubmissionToDelete] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
@@ -119,14 +130,19 @@ export default function SubmissionsPage() {
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (!window.confirm("Delete this submission permanently?")) return;
+    const handleDelete = (id: number) => {
+        setSubmissionToDelete(id);
+    };
+
+    const confirmDelete = async (id: number) => {
         try {
             await deleteSubmission(id);
             setSubmissions(prev => prev.filter(s => s.id !== id));
             toast.success("Submission removed");
         } catch (err) {
             toast.error("Delete failed");
+        } finally {
+            setSubmissionToDelete(null);
         }
     };
 
@@ -536,6 +552,30 @@ export default function SubmissionsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            <AlertDialog open={!!submissionToDelete} onOpenChange={(open) => !open && setSubmissionToDelete(null)}>
+                <AlertDialogContent className="rounded-2xl border-zinc-100 shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-bold text-zinc-900 font-serif">
+                            Permanently Delete?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-500 text-sm">
+                            This action will remove the submission permanently from your records. This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-xl border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-all font-bold text-xs uppercase tracking-widest">
+                            Keep it
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => submissionToDelete && confirmDelete(submissionToDelete)}
+                            className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition-all font-bold text-xs uppercase tracking-widest px-6"
+                        >
+                            Delete Submission
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

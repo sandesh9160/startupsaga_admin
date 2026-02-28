@@ -64,6 +64,7 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     }
 
     const res = await fetch(url, {
+      next: { revalidate: 1 }, // Ensure data is extremely fresh, but allow static check during build
       ...options,
       credentials: "include", // Required for session-based auth
       headers,
@@ -422,7 +423,6 @@ export const getCityStats = async () => {
 };
 
 export const getActivityStats = () => fetchList<any>("/activity-stats/");
-
 export const deleteCategory = categoriesApi.delete;
 export const getPages = pagesApi.list;
 export const getPageById = pagesApi.get;
@@ -520,6 +520,21 @@ export const submitStartup = async (data: any) => {
 /** Get newsletter subscribers */
 export const getNewsletterSubscribers = () => fetchList<any>("/newsletter/list/");
 
+/** Delete newsletter subscriber */
+export const deleteNewsletterSubscriber = (id: number) => fetchAPI(`/newsletter/${id}/delete/`, {
+  method: "DELETE",
+});
+
+/** Toggle block status for newsletter subscriber */
+export const toggleBlockSubscriber = (id: number) => fetchAPI(`/newsletter/${id}/toggle-block/`, {
+  method: "POST",
+});
+
+/** Send test admin alert email */
+export const sendTestAdminAlert = () => fetchAPI("/newsletter/test-admin-alert/", {
+  method: "POST",
+});
+
 export const newsletterTemplatesApi = {
   list: () => fetchList<any>("/newsletter/templates/"),
   get: (id: number) => fetchAPI(`/newsletter/templates/${id}/`),
@@ -532,3 +547,5 @@ export const newsletterTemplatesApi = {
     body: JSON.stringify(data),
   }),
 };
+
+export const getMediaItems = () => fetchList<any>("/media/");

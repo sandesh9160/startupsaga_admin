@@ -40,7 +40,8 @@ import {
     Edit,
     List,
     Building2,
-    MoreHorizontal
+    MoreHorizontal,
+    LayoutGrid
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -49,7 +50,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
-import { fetchAPI, generateContent, generateSEO, getSubmissionDetail, createStory, getStories, updateStory, getStoryById, updateSubmissionStatus, getStartups, getCategories, getHubs } from "@/lib/api";
+import { fetchAPI, generateContent, generateSEO, getSubmissionDetail, createStory, getStories, updateStory, getStoryById, updateSubmissionStatus, getStartups, getCategories, getHubs, startupsApi } from "@/lib/api";
 import { getPromptTemplate, fillTemplate } from "@/lib/prompt-manager";
 import { toast } from "sonner";
 import { getSafeImageSrc } from "@/lib/images";
@@ -70,11 +71,38 @@ type StoryFormData = {
     meta_description: string;
     meta_keywords: string;
     isFeatured: boolean;
-    related_startup_slug?: string;
     image_alt?: string;
     show_table_of_contents: boolean;
     status: StoryStatus;
 };
+
+const BUSINESS_MODELS = [
+    { value: "b2b", label: "B2B" },
+    { value: "b2c", label: "B2C" },
+    { value: "b2b2c", label: "B2B2C" },
+    { value: "d2c", label: "D2C" },
+    { value: "saas", label: "SaaS" },
+    { value: "marketplace", label: "Marketplace" },
+    { value: "subscription", label: "Subscription" },
+    { value: "freemium", label: "Freemium" },
+    { value: "platform", label: "Platform" },
+    { value: "other", label: "Other" },
+];
+
+const STAGES = [
+    "Bootstrapped", "Pre-Seed", "Seed", "Series A",
+    "Series B", "Series C+", "IPO", "Unicorn"
+];
+
+const SECTORS = [
+    "B2B SaaS", "B2C Consumer App", "Marketplace", "Fintech",
+    "Healthtech", "Edtech", "E-commerce/D2C", "Logistics/Supply Chain",
+    "Deeptech/AI", "Agritech", "Clean Energy/Sustainability",
+    "Gaming/Entertainment", "Hardware/Robotics", "Proptech", "Web3/Crypto",
+    "Foodtech", "Mediatech", "Legaltech", "HRtech", "Insurtech"
+];
+
+const TEAM_SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
 
 function NewStoryPageContent() {
     const router = useRouter();
@@ -95,6 +123,7 @@ function NewStoryPageContent() {
     const [sections, setSections] = useState<Array<{ id: string; title: string; content: string }>>([]);
     const [mediaItems, setMediaItems] = useState<any[]>([]);
     const [editingStoryId, setEditingStoryId] = useState<number | null>(null);
+    const [publishType, setPublishType] = useState<"story" | "startup">("story");
     const [formData, setFormData] = useState<StoryFormData>({
         title: "",
         slug: "",
@@ -108,11 +137,59 @@ function NewStoryPageContent() {
         meta_description: "",
         meta_keywords: "",
         isFeatured: false,
-        related_startup_slug: "",
         image_alt: "",
         show_table_of_contents: true,
         status: "draft"
     });
+
+    const [startupData, setStartupData] = useState({
+        name: "",
+        slug: "",
+        tagline: "",
+        description: "",
+        website_url: "",
+        founder_name: "",
+        founder_linkedin: "",
+        founded_year: "",
+        category: "",
+        city: "",
+        stage: "",
+        sector: "",
+        business_model: "",
+        team_size: "",
+        industry_tags: [] as string[],
+        founders_data: [] as any[],
+        status: "published",
+        is_featured: false,
+        logo: "",
+        og_image: "",
+        meta_title: "",
+        meta_description: "",
+        meta_keywords: "",
+    });
+
+
+    const isStory = publishType === "story";
+    const currentThumbnail = isStory ? formData.thumbnail : startupData.logo;
+    const currentStatus = isStory ? formData.status : (startupData.status as StoryStatus);
+    const currentSEO = isStory ? formData : startupData;
+
+    const setThumbnail = (val: string) => {
+        if (isStory) setFormData((prev: StoryFormData) => ({ ...prev, thumbnail: val }));
+        else setStartupData((prev: any) => ({ ...prev, logo: val, og_image: val }));
+    };
+
+    const setStatus = (val: StoryStatus) => {
+        if (isStory) setFormData((prev: StoryFormData) => ({ ...prev, status: val }));
+        else setStartupData((prev: any) => ({ ...prev, status: val }));
+    };
+
+    const setSEO = (field: string, val: string) => {
+        if (isStory) setFormData((prev: StoryFormData) => ({ ...prev, [field]: val }));
+        else setStartupData((prev: any) => ({ ...prev, [field]: val }));
+    };
+
+    const [tagInput, setTagInput] = useState("");
 
     // Local state to hold raw submission info for display
     const [submissionDetails, setSubmissionDetails] = useState<any | null>(null);
@@ -287,7 +364,6 @@ function NewStoryPageContent() {
                         meta_description: story.meta_description || "",
                         meta_keywords: story.meta_keywords || "",
                         isFeatured: story.isFeatured || false,
-                        related_startup_slug: story.related_startup?.slug || "",
                         image_alt: story.image_alt || "",
                         show_table_of_contents: story.show_table_of_contents ?? true,
                         status
@@ -319,9 +395,9 @@ function NewStoryPageContent() {
             getSubmissionDetail(parseInt(submissionId))
                 .then((sub: any) => {
                     const titleFromSubmission = sub.startup_name || "";
-                    setFormData(prev => ({
+                    setFormData((prev: StoryFormData) => ({
                         ...prev,
-                        title: titleFromSubmission ? `${titleFromSubmission}: A Startup Journey` : "", // Admin style title
+                        title: titleFromSubmission ? `${titleFromSubmission}: A Startup Journey` : "",
                         slug: generateSlugFromText(titleFromSubmission),
                         category: sub.category || "Funding",
                         city: sub.city || "Mumbai",
@@ -330,7 +406,6 @@ function NewStoryPageContent() {
                         author: prev.author || sub.founder_name || "Editorial Team",
                         meta_title: titleFromSubmission ? `How ${titleFromSubmission} is Revolutionizing ${sub.category || 'their Industry'}` : "",
                         thumbnail: sub.thumbnail || sub.logo || sub.logo_url || prev.thumbnail || "",
-                        related_startup_slug: sub.startup_name ? sub.startup_name.toLowerCase().replace(/\s+/g, '-') : ""
                     }));
                     // store submission details for UI (if needed later)
                     setSubmissionDetails(sub);
@@ -391,106 +466,74 @@ function NewStoryPageContent() {
     };
 
     const handleGenerateSEO = async () => {
-        if (!formData.title) {
+        const title = isStory ? formData.title : startupData.name;
+        const description = isStory ? formData.excerpt : startupData.tagline;
+        const content = isStory ? formData.content : startupData.description;
+
+        if (!title) {
             toast.error("Please enter a title first!");
             return;
         }
         setIsGenerating(true);
-        console.log("🤖 Starting SEO generation for:", formData.title);
+        console.log("🤖 Starting SEO generation for:", title);
 
         try {
-            // Check for custom SEO prompt
-            const template = await getPromptTemplate("Story SEO Generator");
+            const template = await getPromptTemplate(isStory ? "Story SEO Generator" : "Startup SEO Generator") || (isStory ? "Story SEO Generator" : "Startup SEO Generator");
 
-            if (template) {
-                // Use custom prompt via generateContent
-                const prompt = fillTemplate(template, {
-                    title: formData.title,
-                    description: formData.excerpt || "",
-                    content: formData.content || "",
-                    type: "story"
-                }) + "\n\nReturn the result strictly as a JSON object with keys: meta_title, meta_description, meta_keywords, image_alt. The meta_description MUST BE 160 characters OR LESS.";
+            // Use custom prompt via generateContent
+            const prompt = (typeof template === 'string' && template.includes('{title}'))
+                ? fillTemplate(template, { title, description: description || "", content: content || "", type: publishType })
+                : `Generate SEO metadata for a ${publishType} titled "${title}". Description: ${description}. Content excerpt: ${content?.substring(0, 500)}. Return JSON with meta_title, meta_description, meta_keywords, image_alt.`;
 
-                console.log("📝 Sending custom SEO prompt:", prompt);
-                const result = await generateContent(prompt);
+            const fullPrompt = prompt + "\n\nReturn the result strictly as a JSON object with keys: meta_title, meta_description, meta_keywords, image_alt. The meta_description MUST BE 160 characters OR LESS.";
 
-                if (result.content) {
-                    try {
-                        const jsonStart = result.content.indexOf('{');
-                        const jsonEnd = result.content.lastIndexOf('}') + 1;
-                        const jsonStr = result.content.slice(jsonStart, jsonEnd);
-                        const parsed = JSON.parse(jsonStr);
+            const result = await generateContent(fullPrompt);
 
-                        if (parsed.meta_title && parsed.meta_description) {
-                            setFormData(prev => ({
-                                ...prev,
-                                meta_title: parsed.meta_title,
-                                meta_description: parsed.meta_description?.slice(0, 160),
-                                meta_keywords: parsed.meta_keywords || parsed.keywords || prev.meta_keywords,
-                                image_alt: parsed.image_alt || prev.image_alt
-                            }));
-                            toast.success("✨ Custom SEO metadata generated!");
-                        } else {
-                            throw new Error("Invalid JSON structure");
-                        }
-                    } catch (e) {
-                        console.error("Failed to parse custom SEO response", e);
-                        toast.error("AI returned invalid format. Using standard generator...");
-                        // Fallback to standard
-                        const requestData = {
-                            title: formData.title,
-                            description: formData.excerpt || "",
-                            content: formData.content || "",
-                            type: "story"
+            if (result.content) {
+                try {
+                    const jsonStart = result.content.indexOf('{');
+                    const jsonEnd = result.content.lastIndexOf('}') + 1;
+                    const jsonStr = result.content.slice(jsonStart, jsonEnd);
+                    const parsed = JSON.parse(jsonStr);
+
+                    if (parsed.meta_title && parsed.meta_description) {
+                        const seoData = {
+                            meta_title: parsed.meta_title,
+                            meta_description: parsed.meta_description?.slice(0, 160),
+                            meta_keywords: parsed.meta_keywords || parsed.keywords || "",
                         };
-                        const fallbackResult = await generateSEO(requestData);
-                        if (fallbackResult.meta_title) {
-                            setFormData(prev => ({
-                                ...prev,
-                                meta_title: fallbackResult.meta_title,
-                                meta_description: fallbackResult.meta_description?.slice(0, 160),
-                                meta_keywords: fallbackResult.meta_keywords || fallbackResult.keywords || prev.meta_keywords,
-                                image_alt: fallbackResult.image_alt || prev.image_alt
-                            }));
-                            toast.success("✨ SEO metadata generated!");
+
+                        if (isStory) {
+                            setFormData(prev => ({ ...prev, ...seoData, image_alt: parsed.image_alt || prev.image_alt }));
+                        } else {
+                            setStartupData(prev => ({ ...prev, ...seoData }));
                         }
+                        toast.success(`✨ SEO metadata for ${publishType} generated!`);
+                    } else {
+                        throw new Error("Incomplete result");
                     }
-                }
-            } else {
-                // Use standard backend SEO
-                const requestData = {
-                    title: formData.title,
-                    description: formData.excerpt || "",
-                    content: formData.content || "",
-                    type: "story"
-                };
-                console.log("📝 Sending SEO request:", requestData);
-
-                const result = await generateSEO(requestData);
-                console.log("✅ SEO Response received:", result);
-
-                if (result.error) {
-                    console.error("❌ SEO Error:", result.error);
-                    toast.error(`AI Error: ${result.error}`);
-                } else if (result.meta_title && result.meta_description) {
-                    console.log("✅ SEO metadata generated successfully");
-                    setFormData(prev => ({
-                        ...prev,
-                        meta_title: result.meta_title,
-                        meta_description: result.meta_description?.slice(0, 160),
-                        meta_keywords: result.meta_keywords || result.keywords || prev.meta_keywords,
-                        image_alt: result.image_alt || prev.image_alt
-                    }));
-                    toast.success("✨ SEO metadata generated!");
-                } else {
-                    console.warn("⚠️ Incomplete SEO data:", result);
-                    toast.error("AI returned incomplete data. Please try again.");
+                } catch (e) {
+                    console.error("Failed to parse SEO response", e);
+                    // Standard fallback
+                    const fallback = await generateSEO({ title, description: description || "", content: content || "", type: publishType });
+                    if (fallback.meta_title) {
+                        const seoData = {
+                            meta_title: fallback.meta_title,
+                            meta_description: fallback.meta_description?.slice(0, 160),
+                            meta_keywords: fallback.meta_keywords || "",
+                        };
+                        if (isStory) {
+                            setFormData(prev => ({ ...prev, ...seoData, image_alt: fallback.image_alt || prev.image_alt }));
+                        } else {
+                            setStartupData(prev => ({ ...prev, ...seoData }));
+                        }
+                        toast.success("✨ SEO metadata generated via fallback!");
+                    }
                 }
             }
         } catch (err: any) {
             console.error("❌ SEO Generation Error:", err);
-            const errorMessage = err.message || String(err);
-            toast.error(`Failed to generate SEO: ${errorMessage}`);
+            toast.error(`Failed to generate SEO: ${err.message || String(err)}`);
         } finally {
             setIsGenerating(false);
         }
@@ -571,69 +614,139 @@ function NewStoryPageContent() {
         }
     };
 
-    const handleSave = async (targetStatus: StoryStatus) => {
-        // Validation
-        if (!formData.title.trim()) {
-            toast.error("Please enter a story title!");
+    const handleGenerateStartupContent = async () => {
+        if (!startupData.name) {
+            toast.error("Please enter a startup name first");
             return;
         }
-        if (!formData.content.trim()) {
-            toast.error("Please add content to your story!");
-            return;
-        }
-        if (!formData.slug.trim()) {
-            toast.error("Please provide a URL slug!");
-            return;
-        }
-
-        // Prevent duplicate submissions
-        if (isPublishing) {
-            console.warn("Already saving, ignoring duplicate request");
-            return;
-        }
-
-        setIsPublishing(true);
-
-        // Debug logging
-        console.log("📝 Saving Story:", {
-            mode: editingStoryId ? 'UPDATE' : 'CREATE',
-            storyId: editingStoryId,
-            title: formData.title,
-            slug: formData.slug,
-            status: targetStatus
-        });
-
+        setIsGenerating(true);
         try {
-            const storyData: any = {
-                ...formData,
-                related_startup_slug: formData.related_startup_slug || undefined,
-                sections: sections.length > 0 ? sections : undefined,
-                status: targetStatus
-            };
+            const descResult = await generateContent(`Write a catchy tagline and a professional 3-sentence description for a startup named "${startupData.name}". Respond in JSON format with "tagline" and "description" keys.`);
 
-            let result;
-            if (editingStoryId) {
-                // Update existing story
-                console.log(`🔄 Updating story ID: ${editingStoryId}`);
-                result = await updateStory(editingStoryId, storyData);
-                console.log("✅ Story updated:", result);
-                toast.success(targetStatus === 'published' ? "🎉 Story published!" : "💾 Draft saved!");
-            } else {
-                // Create new story
-                console.log("✨ Creating new story");
-                result = await createStory(storyData);
-                console.log("✅ Story created:", result);
-                toast.success(targetStatus === 'published' ? "🎉 Story published!" : "💾 Draft saved!");
+            let generatedTagline = "";
+            let generatedDesc = "";
+
+            try {
+                const parsed = JSON.parse(descResult.content);
+                generatedTagline = parsed.tagline;
+                generatedDesc = parsed.description;
+            } catch {
+                const lines = descResult.content.split('\n').filter((l: string) => l.trim());
+                generatedTagline = lines[0]?.replace(/^Tagline: /i, '') || "";
+                generatedDesc = lines.slice(1).join(' ') || lines[0] || "";
             }
 
-            // Wait a brief moment before redirecting
-            setTimeout(() => {
+            const seoResult = await generateSEO({
+                title: startupData.name,
+                description: generatedDesc || startupData.name,
+                content: generatedDesc || startupData.name,
+                type: 'startup'
+            });
+
+            setStartupData(prev => ({
+                ...prev,
+                tagline: generatedTagline || prev.tagline,
+                description: generatedDesc || prev.description,
+                meta_title: seoResult.meta_title || `${startupData.name} | Startup Directory`,
+                meta_description: seoResult.meta_description || generatedDesc || ""
+            }));
+
+            toast.success("Content generated with AI");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to generate content");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const addFounder = () => {
+        setStartupData(prev => ({
+            ...prev,
+            founders_data: [...prev.founders_data, { name: "", role: "", linkedin: "", image: "" }]
+        }));
+    };
+
+    const removeFounder = (index: number) => {
+        setStartupData(prev => ({
+            ...prev,
+            founders_data: prev.founders_data.filter((_, i) => i !== index)
+        }));
+    };
+
+    const updateFounder = (index: number, field: string, value: string) => {
+        setStartupData(prev => ({
+            ...prev,
+            founders_data: prev.founders_data.map((f, i) => i === index ? { ...f, [field]: value } : f)
+        }));
+    };
+
+    const addTag = () => {
+        const tag = tagInput.trim();
+        if (tag && !startupData.industry_tags.includes(tag)) {
+            setStartupData(prev => ({ ...prev, industry_tags: [...prev.industry_tags, tag] }));
+            setTagInput("");
+        }
+    };
+
+    const removeTag = (tag: string) => {
+        setStartupData(prev => ({ ...prev, industry_tags: startupData.industry_tags.filter(t => t !== tag) }));
+    };
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setStartupData(prev => ({ ...prev, [field]: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSave = async (targetStatus: StoryStatus) => {
+        if (isPublishing) return;
+        setIsPublishing(true);
+
+        try {
+            if (publishType === "story") {
+                if (!formData.title.trim()) { toast.error("Please enter a story title!"); setIsPublishing(false); return; }
+                if (!formData.content.trim()) { toast.error("Please add content to your story!"); setIsPublishing(false); return; }
+                if (!formData.slug.trim()) { toast.error("Please provide a URL slug!"); setIsPublishing(false); return; }
+
+                const storyData: any = {
+                    ...formData,
+                    sections: sections.length > 0 ? sections : undefined,
+                    status: targetStatus
+                };
+
+                if (editingStoryId) {
+                    await updateStory(editingStoryId, storyData);
+                    toast.success(targetStatus === 'published' ? "🎉 Story published!" : "💾 Draft saved!");
+                } else {
+                    await createStory(storyData);
+                    toast.success(targetStatus === 'published' ? "🎉 Story published!" : "💾 Draft saved!");
+                }
                 router.push("/dashboard/stories");
-            }, 500);
+            } else {
+                if (!startupData.name.trim()) { toast.error("Please enter startup name!"); setIsPublishing(false); return; }
+                if (!startupData.slug.trim()) { toast.error("Please provide a URL slug!"); setIsPublishing(false); return; }
+
+                const cleanData = {
+                    ...startupData,
+                    founded_year: startupData.founded_year ? parseInt(startupData.founded_year.toString()) : undefined,
+                    funding_stage: startupData.stage,
+                    industry_tags: startupData.industry_tags.length > 0 ? startupData.industry_tags : (startupData.sector ? [startupData.sector] : []),
+                    status: targetStatus === 'draft' ? 'draft' : 'published'
+                };
+                await startupsApi.create(cleanData);
+                toast.success("Startup created successfully");
+                router.push("/dashboard/startups");
+            }
         } catch (err: any) {
-            console.error("❌ Save Error:", err);
-            toast.error(err.message || "Failed to save story.");
-            setIsPublishing(false); // Re-enable on error
+            console.error(err);
+            toast.error(err.message || "Failed to save.");
+            setIsPublishing(false);
         }
     };
 
@@ -644,25 +757,20 @@ function NewStoryPageContent() {
                 {/* ── HEADER ── */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-zinc-50 border border-zinc-100 shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="h-11 w-11 rounded-xl bg-purple-600 flex items-center justify-center shadow-md shadow-purple-200">
-                            <PenTool className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Stories</p>
-                            <h1 className="text-xl font-bold tracking-tight text-zinc-900">
-                                {editingStoryId ? "Edit Story" : "New Story"}
+                        <button
+                            onClick={() => router.push("/dashboard/stories")}
+                            className="h-10 w-10 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-500 hover:text-zinc-900 shadow-sm transition-all flex items-center justify-center shrink-0"
+                        >
+                            <ChevronLeft size={20} strokeWidth={2.5} />
+                        </button>
+                        <div className="flex flex-col">
+                            <h1 className="text-xl font-bold tracking-tight text-zinc-900 mt-1">
+                                Write a Story
                             </h1>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => router.push("/dashboard/stories")}
-                            className="h-9 w-9 rounded-xl border border-zinc-200 hover:bg-white text-zinc-500 hover:text-zinc-900 shadow-sm transition-all flex items-center justify-center"
-                        >
-                            <ChevronLeft size={18} strokeWidth={2.5} />
-                        </button>
-
                         <button
                             onClick={() => {
                                 if (formData.slug) {
@@ -671,7 +779,7 @@ function NewStoryPageContent() {
                                     toast.error("Slug required for preview");
                                 }
                             }}
-                            className="h-9 px-4 rounded-xl bg-white border border-zinc-200 text-xs font-bold text-zinc-600 hover:text-zinc-900 shadow-sm transition-all flex items-center gap-1.5"
+                            className="h-9 px-4 rounded-xl bg-white border border-zinc-200 text-[10px] font-bold text-zinc-600 hover:text-zinc-900 shadow-sm transition-all flex items-center gap-1.5 uppercase tracking-widest"
                         >
                             <Eye className="h-3.5 w-3.5" /> Preview
                         </button>
@@ -679,7 +787,7 @@ function NewStoryPageContent() {
                         <button
                             onClick={() => handleSave('draft')}
                             disabled={isPublishing}
-                            className="h-9 px-4 rounded-xl bg-white border border-zinc-200 text-xs font-bold text-zinc-600 hover:text-zinc-900 shadow-sm transition-all flex items-center gap-1.5"
+                            className="h-9 px-4 rounded-xl bg-white border border-zinc-200 text-[10px] font-bold text-zinc-600 hover:text-zinc-900 shadow-sm transition-all flex items-center gap-1.5 uppercase tracking-widest"
                         >
                             {isPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                             Save Draft
@@ -688,7 +796,7 @@ function NewStoryPageContent() {
                         <button
                             onClick={() => handleSave('published')}
                             disabled={isPublishing}
-                            className="h-9 px-5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all active:scale-95 shadow-sm shadow-purple-200 flex items-center gap-1.5"
+                            className="h-9 px-5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 shadow-md shadow-purple-200 flex items-center gap-1.5"
                         >
                             {isPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Globe className="h-3.5 w-3.5" />}
                             {isPublishing ? "Saving..." : (editingStoryId && formData.status === 'published' ? 'Update' : 'Publish')}
@@ -698,349 +806,541 @@ function NewStoryPageContent() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Story Details */}
-                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
-                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50">
-                                <CardTitle className="text-[10px] font-black flex items-center gap-2.5 text-zinc-500 uppercase tracking-widest">
-                                    <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
-                                        <PenTool className="h-3 w-3 text-white" />
-                                    </div>
-                                    Story Details
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-6 space-y-6">
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                                            <FileText className="h-3.5 w-3.5" />
-                                            Headline
-                                        </Label>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 px-2 text-[10px] font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-all"
-                                            onClick={() => {
-                                                if (!formData.title) {
-                                                    toast.error("Enter a title first");
-                                                    return;
-                                                }
-                                                const newSlug = generateSlugFromText(formData.title);
-                                                setFormData(prev => ({ ...prev, slug: newSlug }));
-                                                setSlugManuallyEdited(true);
-                                                toast.success("Slug generated from headline");
-                                            }}
-                                        >
-                                            <Sparkles className="h-3 w-3 mr-1" />
-                                            Generate Slug
-                                        </Button>
-                                    </div>
-                                    <Input
-                                        placeholder="e.g., Zepto Raises $665M, Becomes India's Fastest Growing Unicorn"
-                                        value={formData.title}
-                                        onChange={(e) => {
-                                            const newTitle = e.target.value;
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                title: newTitle,
-                                                slug: isSlugSynced ? generateSlugFromText(newTitle) : prev.slug
-                                            }));
-                                        }}
-                                        className="h-14 text-base font-bold rounded-xl bg-secondary border-border focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all"
-                                    />
-                                </div>
-
-                                <div className="space-y-3">
-                                    <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                                        <Lightbulb className="h-3.5 w-3.5" />
-                                        Excerpt (TL;DR)
-                                    </Label>
-                                    <Textarea
-                                        placeholder="Brief summary that appears at the top of the story..."
-                                        value={formData.excerpt}
-                                        onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
-                                        className="min-h-[100px] text-sm rounded-xl bg-secondary border-border focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                                                <Globe className="h-3.5 w-3.5" />
-                                                URL Slug
-                                            </Label>
-                                            <div className="flex items-center gap-1">
+                        {publishType === "story" ? (
+                            <>
+                                {/* Story Details */}
+                                <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                    <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50">
+                                        <CardTitle className="text-[10px] font-black flex items-center gap-2.5 text-zinc-500 uppercase tracking-widest">
+                                            <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
+                                                <PenTool className="h-3 w-3 text-white" />
+                                            </div>
+                                            Story Details
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-6 space-y-6">
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                                                    <FileText className="h-3.5 w-3.5" />
+                                                    Headline
+                                                </Label>
                                                 <Button
-                                                    type="button"
                                                     variant="ghost"
                                                     size="sm"
+                                                    className="h-6 px-2 text-[10px] font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-all"
                                                     onClick={() => {
-                                                        const newState = !isSlugSynced;
-                                                        setIsSlugSynced(newState);
-                                                        if (newState && formData.title) {
-                                                            setFormData(prev => ({ ...prev, slug: generateSlugFromText(formData.title) }));
+                                                        if (!formData.title) {
+                                                            toast.error("Enter a title first");
+                                                            return;
                                                         }
+                                                        const newSlug = generateSlugFromText(formData.title);
+                                                        setFormData(prev => ({ ...prev, slug: newSlug }));
+                                                        setSlugManuallyEdited(true);
+                                                        toast.success("Slug generated from headline");
                                                     }}
-                                                    className={cn(
-                                                        "h-7 px-2 text-[10px] font-bold rounded-lg transition-all",
-                                                        isSlugSynced ? "text-emerald-600 bg-emerald-50" : "text-zinc-400 hover:text-zinc-600"
-                                                    )}
-                                                    title={isSlugSynced ? "Slug is synced with title" : "Click to sync slug with title"}
                                                 >
-                                                    {isSlugSynced ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
-                                                    {isSlugSynced ? "Synced" : "Sync"}
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={handleGenerateSlug}
-                                                    disabled={isGenerating}
-                                                    className="h-7 px-3 text-[10px] font-bold text-primary hover:text-primary/90 hover:bg-indigo-50 rounded-lg"
-                                                >
-                                                    {isGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
-                                                    AI Slug
+                                                    <Sparkles className="h-3 w-3 mr-1" />
+                                                    Generate Slug
                                                 </Button>
                                             </div>
-                                        </div>
-                                        <div className="relative">
-                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[11px] font-bold text-zinc-400">/stories/</div>
                                             <Input
-                                                placeholder="zepto-raises-665m"
-                                                value={formData.slug}
+                                                placeholder="e.g., Zepto Raises $665M, Becomes India's Fastest Growing Unicorn"
+                                                value={formData.title}
                                                 onChange={(e) => {
-                                                    setFormData({ ...formData, slug: e.target.value });
-                                                    setSlugManuallyEdited(true);
-                                                    setIsSlugSynced(false);
+                                                    const newTitle = e.target.value;
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        title: newTitle,
+                                                        slug: isSlugSynced ? generateSlugFromText(newTitle) : prev.slug
+                                                    }));
                                                 }}
-                                                className="h-11 pl-[72px] rounded-xl bg-secondary border-border text-xs font-bold transition-all focus:bg-white"
+                                                className="h-14 text-base font-bold rounded-xl bg-secondary border-border focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all"
                                             />
                                         </div>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                                            <Tag className="h-3.5 w-3.5" />
-                                            Category
-                                        </Label>
-                                        <Select
-                                            value={formData.category}
-                                            onValueChange={(val) => setFormData({ ...formData, category: val })}
-                                        >
-                                            <SelectTrigger className="h-11 rounded-xl bg-secondary border-border text-xs font-bold transition-all focus:bg-white">
-                                                <SelectValue placeholder="Select Category" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {categories.map((cat) => (
-                                                    <SelectItem key={cat.slug} value={cat.name}>
-                                                        {cat.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
 
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                                            <MapPin className="h-3.5 w-3.5" />
-                                            City/Location
-                                        </Label>
-                                        <Select
-                                            value={formData.city}
-                                            onValueChange={(val) => setFormData({ ...formData, city: val })}
-                                        >
-                                            <SelectTrigger className="h-11 rounded-xl bg-secondary border-border text-xs font-bold transition-all focus:bg-white">
-                                                <SelectValue placeholder="Select City" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {hubs.map((hub) => (
-                                                    <SelectItem key={hub.slug} value={hub.name}>
-                                                        {hub.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                                            <User className="h-3.5 w-3.5" />
-                                            Author Name
-                                        </Label>
-                                        <Input
-                                            placeholder="e.g., Priya Sharma, Rahul Verma"
-                                            value={formData.author}
-                                            onChange={(e) => setFormData({ ...formData, author: e.target.value })}
-                                            className="h-11 rounded-xl bg-secondary border-border text-xs font-bold transition-all focus:bg-white"
-                                        />
-                                    </div>
-                                </div>
+                                        <div className="space-y-3">
+                                            <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                                                <Lightbulb className="h-3.5 w-3.5" />
+                                                Excerpt (TL;DR)
+                                            </Label>
+                                            <Textarea
+                                                placeholder="Brief summary that appears at the top of the story..."
+                                                value={formData.excerpt}
+                                                onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
+                                                className="min-h-[100px] text-sm rounded-xl bg-secondary border-border focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                                            />
+                                        </div>
 
-                                <div className="space-y-2 pt-4 border-t border-zinc-100">
-                                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                                        <Building2 className="h-3.5 w-3.5 text-purple-500" />
-                                        Linked Startup
-                                    </Label>
-                                    <Select
-                                        value={formData.related_startup_slug || "none_selection"}
-                                        onValueChange={(value) => setFormData(prev => ({ ...prev, related_startup_slug: value === "none_selection" ? "" : value }))}
-                                    >
-                                        <SelectTrigger className="h-11 rounded-xl bg-zinc-50 border-transparent text-xs font-bold transition-all focus:bg-white focus:ring-1 focus:ring-zinc-200 text-left px-4">
-                                            <SelectValue placeholder="Select platform startup..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-xl border-zinc-100 shadow-xl p-1 max-h-[300px]">
-                                            <SelectItem value="none_selection" className="rounded-lg py-2 text-[10px] font-bold text-zinc-400">
-                                                None (standalone story)
-                                            </SelectItem>
-                                            {startups.map((s) => (
-                                                <SelectItem key={s.id} value={s.slug} className="rounded-lg py-2.5 focus:bg-zinc-50 transition-all">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-7 w-7 rounded-md bg-white border border-zinc-200 p-1 flex items-center justify-center overflow-hidden shrink-0">
-                                                            {s.logo ? (
-                                                                <img src={getSafeImageSrc(s.logo)} alt="" className="h-full w-full object-contain" />
-                                                            ) : (
-                                                                <div className="text-[8px] font-black text-zinc-300">NA</div>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                                                        <Globe className="h-3.5 w-3.5" />
+                                                        URL Slug
+                                                    </Label>
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                const newState = !isSlugSynced;
+                                                                setIsSlugSynced(newState);
+                                                                if (newState && formData.title) {
+                                                                    setFormData(prev => ({ ...prev, slug: generateSlugFromText(formData.title) }));
+                                                                }
+                                                            }}
+                                                            className={cn(
+                                                                "h-7 px-2 text-[10px] font-bold rounded-lg transition-all",
+                                                                isSlugSynced ? "text-emerald-600 bg-emerald-50" : "text-zinc-400 hover:text-zinc-600"
                                                             )}
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <div className="text-[11px] font-bold text-zinc-800 leading-tight">{s.name}</div>
-                                                            <div className="text-[9px] text-zinc-400 font-medium truncate max-w-[150px]">
-                                                                {s.category} • {s.city}
-                                                            </div>
-                                                        </div>
+                                                            title={isSlugSynced ? "Slug is synced with title" : "Click to sync slug with title"}
+                                                        >
+                                                            {isSlugSynced ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
+                                                            {isSlugSynced ? "Synced" : "Sync"}
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={handleGenerateSlug}
+                                                            disabled={isGenerating}
+                                                            className="h-7 px-3 text-[10px] font-bold text-primary hover:text-primary/90 hover:bg-indigo-50 rounded-lg"
+                                                        >
+                                                            {isGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                                                            AI Slug
+                                                        </Button>
                                                     </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                                </div>
+                                                <div className="relative">
+                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[11px] font-bold text-zinc-400">/stories/</div>
+                                                    <Input
+                                                        placeholder="zepto-raises-665m"
+                                                        value={formData.slug}
+                                                        onChange={(e) => {
+                                                            setFormData({ ...formData, slug: e.target.value });
+                                                            setSlugManuallyEdited(true);
+                                                            setIsSlugSynced(false);
+                                                        }}
+                                                        className="h-11 pl-[72px] rounded-xl bg-secondary border-border text-xs font-bold transition-all focus:bg-white"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                                                    <Tag className="h-3.5 w-3.5" />
+                                                    Category
+                                                </Label>
+                                                <Select
+                                                    value={formData.category}
+                                                    onValueChange={(val) => setFormData({ ...formData, category: val })}
+                                                >
+                                                    <SelectTrigger className="h-11 rounded-xl bg-secondary border-border text-xs font-bold transition-all focus:bg-white">
+                                                        <SelectValue placeholder="Select Category" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {categories.map((cat) => (
+                                                            <SelectItem key={cat.slug} value={cat.name}>
+                                                                {cat.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
 
-                        {/* Compact Editor Card */}
-                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
-                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
-                                <CardTitle className="text-[10px] font-black flex items-center gap-2.5 text-zinc-500 uppercase tracking-widest">
-                                    <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
-                                        <Layout className="h-3 w-3 text-white" />
-                                    </div>
-                                    Story Content
-                                </CardTitle>
-                                <Button
-                                    onClick={handleWriteWithAI}
-                                    disabled={isGenerating}
-                                    className="h-7 px-3 rounded-lg text-[9px] font-black bg-zinc-100 hover:bg-zinc-200 text-zinc-900 transition-all border-none"
-                                >
-                                    {isGenerating ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Sparkles className="h-3 w-3 mr-1.5" />}
-                                    AI Writer
-                                </Button>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <RichTextEditor
-                                    content={formData.content}
-                                    onChange={(content) => setFormData({ ...formData, content })}
-                                    placeholder="Start writing..."
-                                />
-                            </CardContent>
-                        </Card>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div className="space-y-3">
+                                                <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                                                    <MapPin className="h-3.5 w-3.5" />
+                                                    City/Location
+                                                </Label>
+                                                <Select
+                                                    value={formData.city}
+                                                    onValueChange={(val) => setFormData({ ...formData, city: val })}
+                                                >
+                                                    <SelectTrigger className="h-11 rounded-xl bg-secondary border-border text-xs font-bold transition-all focus:bg-white">
+                                                        <SelectValue placeholder="Select City" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {hubs.map((hub) => (
+                                                            <SelectItem key={hub.slug} value={hub.name}>
+                                                                {hub.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <Label className="text-xs font-black text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                                                    <User className="h-3.5 w-3.5" />
+                                                    Author Name
+                                                </Label>
+                                                <Input
+                                                    placeholder="e.g., Priya Sharma, Rahul Verma"
+                                                    value={formData.author}
+                                                    onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                                                    className="h-11 rounded-xl bg-secondary border-border text-xs font-bold transition-all focus:bg-white"
+                                                />
+                                            </div>
+                                        </div>
+
+                                    </CardContent>
+                                </Card>
+
+                                {/* Compact Editor Card */}
+                                <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                    <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+                                        <CardTitle className="text-[10px] font-black flex items-center gap-2.5 text-zinc-500 uppercase tracking-widest">
+                                            <div className="h-6 w-6 rounded-lg bg-purple-600 flex items-center justify-center">
+                                                <Layout className="h-3 w-3 text-white" />
+                                            </div>
+                                            Story Content
+                                        </CardTitle>
+                                        <Button
+                                            onClick={handleWriteWithAI}
+                                            disabled={isGenerating}
+                                            className="h-7 px-3 rounded-lg text-[9px] font-black bg-zinc-100 hover:bg-zinc-200 text-zinc-900 transition-all border-none"
+                                        >
+                                            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Sparkles className="h-3 w-3 mr-1.5" />}
+                                            AI Writer
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="p-0">
+                                        <RichTextEditor
+                                            content={formData.content}
+                                            onChange={(content) => setFormData({ ...formData, content })}
+                                            placeholder="Start writing..."
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </>
+                        ) : (
+                            <>
+                                {/* Startup Identity Card */}
+                                <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                    <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+                                        <CardTitle className="text-[10px] font-black flex items-center gap-2.5 text-zinc-500 uppercase tracking-widest">
+                                            <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
+                                                <Building2 className="h-3 w-3 text-white" />
+                                            </div>
+                                            Venture Identity
+                                        </CardTitle>
+                                        <Button
+                                            onClick={handleGenerateStartupContent}
+                                            disabled={isGenerating || !startupData.name}
+                                            className="h-7 px-3 rounded-lg text-[9px] font-black bg-zinc-100 hover:bg-zinc-200 text-zinc-900 transition-all border-none"
+                                        >
+                                            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Sparkles className="h-3 w-3 mr-1.5" />}
+                                            AI Assistant
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="p-6 space-y-6">
+                                        <div className="grid grid-cols-2 gap-5">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Startup Name</Label>
+                                                <Input
+                                                    placeholder="e.g. Acme Fintech"
+                                                    value={startupData.name}
+                                                    onChange={(e) => {
+                                                        const newName = e.target.value;
+                                                        setStartupData(prev => ({
+                                                            ...prev,
+                                                            name: newName,
+                                                            slug: prev.slug || newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+                                                        }));
+                                                    }}
+                                                    className="h-11 px-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 transition-all font-semibold"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">URL Slug</Label>
+                                                <div className="relative">
+                                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">/startups/</div>
+                                                    <Input
+                                                        placeholder="acme-fintech"
+                                                        value={startupData.slug}
+                                                        onChange={(e) => setStartupData({ ...startupData, slug: e.target.value })}
+                                                        className="h-11 pl-16 pr-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-5">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Website URL</Label>
+                                                <Input
+                                                    placeholder="https://example.com"
+                                                    value={startupData.website_url}
+                                                    onChange={(e) => setStartupData({ ...startupData, website_url: e.target.value })}
+                                                    className="h-11 rounded-xl border-zinc-200 bg-white"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Tagline</Label>
+                                                <Input
+                                                    placeholder="e.g. 10-minute grocery delivery"
+                                                    value={startupData.tagline}
+                                                    onChange={(e) => setStartupData({ ...startupData, tagline: e.target.value })}
+                                                    className="h-11 rounded-xl border-zinc-200"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-5">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
+                                                <Select
+                                                    value={startupData.category}
+                                                    onValueChange={(v) => setStartupData({ ...startupData, category: v })}
+                                                >
+                                                    <SelectTrigger className="h-11 rounded-xl border-zinc-200 bg-white">
+                                                        <SelectValue placeholder="Select Category" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {categories.map((cat) => (
+                                                            <SelectItem key={cat.slug} value={cat.name}>
+                                                                {cat.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Location Hub</Label>
+                                                <Select
+                                                    value={startupData.city}
+                                                    onValueChange={(v) => setStartupData({ ...startupData, city: v })}
+                                                >
+                                                    <SelectTrigger className="h-11 rounded-xl border-zinc-200 bg-white">
+                                                        <SelectValue placeholder="Select Hub" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {hubs.map((hub) => (
+                                                            <SelectItem key={hub.slug} value={hub.name}>
+                                                                {hub.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Business Stats Card */}
+                                <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                    <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50">
+                                        <CardTitle className="text-[10px] font-black flex items-center gap-2.5 text-zinc-500 uppercase tracking-widest">
+                                            <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
+                                                <LayoutGrid className="h-3 w-3 text-white" />
+                                            </div>
+                                            Business Stats
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-6 space-y-5">
+                                        <div className="grid grid-cols-4 gap-5">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Founded</Label>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="2024"
+                                                    value={startupData.founded_year}
+                                                    onChange={(e) => setStartupData({ ...startupData, founded_year: e.target.value })}
+                                                    className="h-10 rounded-xl border-zinc-200"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Stage</Label>
+                                                <Select
+                                                    value={startupData.stage}
+                                                    onValueChange={(v) => setStartupData({ ...startupData, stage: v })}
+                                                >
+                                                    <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
+                                                        <SelectValue placeholder="Select" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {STAGES.map(s => (
+                                                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Model</Label>
+                                                <Select
+                                                    value={startupData.business_model}
+                                                    onValueChange={(v) => setStartupData({ ...startupData, business_model: v })}
+                                                >
+                                                    <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
+                                                        <SelectValue placeholder="Select" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {BUSINESS_MODELS.map(m => (
+                                                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Team</Label>
+                                                <Select
+                                                    value={startupData.team_size}
+                                                    onValueChange={(v) => setStartupData({ ...startupData, team_size: v })}
+                                                >
+                                                    <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
+                                                        <SelectValue placeholder="Select" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {TEAM_SIZES.map(s => (
+                                                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Sector</Label>
+                                            <Select
+                                                value={startupData.sector}
+                                                onValueChange={(v) => setStartupData({ ...startupData, sector: v })}
+                                            >
+                                                <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold">
+                                                    <SelectValue placeholder="Select Sector" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {SECTORS.map(s => (
+                                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Startup Journey Editor */}
+                                <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                    <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50">
+                                        <CardTitle className="text-[10px] font-black flex items-center gap-2.5 text-zinc-500 uppercase tracking-widest">
+                                            <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
+                                                <PenTool className="h-3 w-3 text-white" />
+                                            </div>
+                                            Startup Journey
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-0">
+                                        <RichTextEditor
+                                            content={startupData.description}
+                                            onChange={(val) => setStartupData({ ...startupData, description: val })}
+                                            placeholder="Tell the full story of the startup journey..."
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </>
+                        )}
                     </div>
 
                     <div className="space-y-6">
                         {/* Dynamic Editable Table of Contents - Sidebar */}
-                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white group/toc relative">
-                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="h-6 w-6 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                                        <List className="h-3 w-3 text-orange-600" />
+                        {isStory && (
+                            <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white group/toc relative">
+                                <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-6 w-6 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                                            <List className="h-3 w-3 text-orange-600" />
+                                        </div>
+                                        <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
+                                            Content Outline
+                                        </CardTitle>
                                     </div>
-                                    <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
-                                        Content Outline
-                                    </CardTitle>
-                                </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-zinc-100">
-                                            <Plus className="h-3.5 w-3.5 text-orange-600" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
-                                        <div className="px-2 py-1.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-50 mb-1">
-                                            Insert Structure
-                                        </div>
-                                        {sectionTemplates.map((template) => (
-                                            <DropdownMenuItem
-                                                key={template.title}
-                                                onClick={() => handleAddStandardSection(template)}
-                                                className="rounded-lg py-2 cursor-pointer focus:bg-orange-50 focus:text-orange-700"
-                                            >
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs font-bold">{template.title}</span>
-                                                </div>
-                                            </DropdownMenuItem>
-                                        ))}
-                                        <div className="h-px bg-zinc-100 my-1" />
-                                        <DropdownMenuItem
-                                            onClick={handleAddEmptySection}
-                                            className="rounded-lg py-2 cursor-pointer font-bold text-xs"
-                                        >
-                                            <Plus className="h-3 w-3 mr-2" /> Custom Story Section
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </CardHeader>
-                            <CardContent className="p-5">
-                                {tocItems.length > 0 ? (
-                                    <ol className="space-y-1.5">
-                                        {tocItems.map((item) => (
-                                            <li key={`${item.startIndex}-${item.id}`} className="flex items-center gap-2 group/item">
-                                                <span className={cn(
-                                                    "text-[9px] font-black leading-none min-w-[20px] shrink-0",
-                                                    item.tag === 'h2' ? "text-orange-500/50" : "text-zinc-300 ml-1.5"
-                                                )}>
-                                                    {item.tag === 'h2' ? `${item.id}.` : `•`}
-                                                </span>
-                                                <Input
-                                                    defaultValue={item.title}
-                                                    onBlur={(e) => handleRenameHeading(item.startIndex, item.fullMatch, item.title, e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            (e.target as HTMLInputElement).blur();
-                                                        }
-                                                    }}
-                                                    className={cn(
-                                                        "h-8 border-transparent bg-transparent hover:bg-zinc-50 focus:bg-white focus:border-zinc-200 rounded-lg px-2 transition-all flex-1",
-                                                        item.tag === 'h2' ? "text-xs font-bold text-zinc-700" : "text-[11px] font-medium text-zinc-500"
-                                                    )}
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteHeading(item.startIndex, item.fullMatch)}
-                                                    className="opacity-0 group-hover/item:opacity-100 h-6 w-6 flex items-center justify-center rounded-md text-zinc-400 hover:text-rose-500 hover:bg-rose-50 transition-all shrink-0"
-                                                    title="Remove this section"
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-zinc-100">
+                                                <Plus className="h-3.5 w-3.5 text-orange-600" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
+                                            <div className="px-2 py-1.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-50 mb-1">
+                                                Insert Structure
+                                            </div>
+                                            {sectionTemplates.map((template) => (
+                                                <DropdownMenuItem
+                                                    key={template.title}
+                                                    onClick={() => handleAddStandardSection(template)}
+                                                    className="rounded-lg py-2 cursor-pointer focus:bg-orange-50 focus:text-orange-700"
                                                 >
-                                                    <Trash2 className="h-3 w-3" />
-                                                </button>
-                                            </li>
-                                        ))}
-                                    </ol>
-                                ) : (
-                                    <div className="py-6 text-center border-2 border-dashed border-zinc-100 rounded-2xl bg-zinc-50/50">
-                                        <div className="h-8 w-8 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-2">
-                                            <Plus className="h-4 w-4 text-orange-500" />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold">{template.title}</span>
+                                                    </div>
+                                                </DropdownMenuItem>
+                                            ))}
+                                            <div className="h-px bg-zinc-100 my-1" />
+                                            <DropdownMenuItem
+                                                onClick={handleAddEmptySection}
+                                                className="rounded-lg py-2 cursor-pointer font-bold text-xs"
+                                            >
+                                                <Plus className="h-3 w-3 mr-2" /> Custom Story Section
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </CardHeader>
+                                <CardContent className="p-5">
+                                    {tocItems.length > 0 ? (
+                                        <ol className="space-y-1.5">
+                                            {tocItems.map((item) => (
+                                                <li key={`${item.startIndex}-${item.id}`} className="flex items-center gap-2 group/item">
+                                                    <span className={cn(
+                                                        "text-[9px] font-black leading-none min-w-[20px] shrink-0",
+                                                        item.tag === 'h2' ? "text-orange-500/50" : "text-zinc-300 ml-1.5"
+                                                    )}>
+                                                        {item.tag === 'h2' ? `${item.id}.` : `•`}
+                                                    </span>
+                                                    <Input
+                                                        defaultValue={item.title}
+                                                        onBlur={(e) => handleRenameHeading(item.startIndex, item.fullMatch, item.title, e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                (e.target as HTMLInputElement).blur();
+                                                            }
+                                                        }}
+                                                        className={cn(
+                                                            "h-8 border-transparent bg-transparent hover:bg-zinc-50 focus:bg-white focus:border-zinc-200 rounded-lg px-2 transition-all flex-1",
+                                                            item.tag === 'h2' ? "text-xs font-bold text-zinc-700" : "text-[11px] font-medium text-zinc-500"
+                                                        )}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteHeading(item.startIndex, item.fullMatch)}
+                                                        className="opacity-0 group-hover/item:opacity-100 h-6 w-6 flex items-center justify-center rounded-md text-zinc-400 hover:text-rose-500 hover:bg-rose-50 transition-all shrink-0"
+                                                        title="Remove this section"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ol>
+                                    ) : (
+                                        <div className="py-6 text-center border-2 border-dashed border-zinc-100 rounded-2xl bg-zinc-50/50">
+                                            <div className="h-8 w-8 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-2">
+                                                <Plus className="h-4 w-4 text-orange-500" />
+                                            </div>
+                                            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">No sections yet</p>
+                                            <p className="text-[9px] text-zinc-400 mt-1">
+                                                Click [+] above to add a story section
+                                            </p>
                                         </div>
-                                        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">No sections yet</p>
-                                        <p className="text-[9px] text-zinc-400 mt-1">
-                                            Click [+] above to add a story section
+                                    )}
+                                    <div className="mt-4 pt-4 border-t border-zinc-50">
+                                        <p className="text-[10px] text-zinc-400 font-medium leading-relaxed">
+                                            Headings found in your content will appear here for quick management.
                                         </p>
                                     </div>
-                                )}
-                                <div className="mt-4 pt-4 border-t border-zinc-50">
-                                    <p className="text-[10px] text-zinc-400 font-medium leading-relaxed">
-                                        Headings found in your content will appear here for quick management.
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        )}
 
 
 
@@ -1106,7 +1406,7 @@ function NewStoryPageContent() {
                         <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
                             <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50">
                                 <CardTitle className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                                    <ImageIcon className="h-3.5 w-3.5" /> Cover Image
+                                    <ImageIcon className="h-3.5 w-3.5" /> {isStory ? "Cover Image" : "Startup Logo"}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-5 space-y-4">
@@ -1115,9 +1415,9 @@ function NewStoryPageContent() {
                                         onClick={() => document.getElementById('thumbnail-upload')?.click()}
                                         className="aspect-video w-full rounded-xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:bg-indigo-50/30 hover:border-indigo-300 transition-all"
                                     >
-                                        {formData.thumbnail ? (
+                                        {currentThumbnail ? (
                                             <>
-                                                <img src={formData.thumbnail} alt="Cover" className="h-full w-full object-cover" />
+                                                <img src={currentThumbnail} alt="Cover" className="h-full w-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                     <span className="text-white text-xs font-bold bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">Change Image</span>
                                                 </div>
@@ -1127,7 +1427,7 @@ function NewStoryPageContent() {
                                                 <div className="h-12 w-12 rounded-full bg-white shadow-md flex items-center justify-center border-2 border-zinc-200 group-hover:border-indigo-300">
                                                     <Plus className="h-6 w-6" />
                                                 </div>
-                                                <span className="text-xs font-bold">Add Cover Image</span>
+                                                <span className="text-xs font-bold">Add Image</span>
                                             </div>
                                         )}
                                     </div>
@@ -1141,8 +1441,8 @@ function NewStoryPageContent() {
                                         </div>
                                         <select
                                             className="w-full h-10 rounded-xl border border-zinc-100 bg-zinc-50 px-3 text-xs font-bold text-zinc-700 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500/10"
-                                            value={formData.thumbnail}
-                                            onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
+                                            value={currentThumbnail}
+                                            onChange={(e) => setThumbnail(e.target.value)}
                                         >
                                             <option value="">— Choose an asset —</option>
                                             {mediaItems.map((m: any) => (
@@ -1163,7 +1463,7 @@ function NewStoryPageContent() {
                                                 if (file) {
                                                     const reader = new FileReader();
                                                     reader.onloadend = () => {
-                                                        setFormData({ ...formData, thumbnail: reader.result as string });
+                                                        setThumbnail(reader.result as string);
                                                     };
                                                     reader.readAsDataURL(file);
                                                 }
@@ -1171,8 +1471,8 @@ function NewStoryPageContent() {
                                         />
                                         <Input
                                             placeholder="Or paste image URL..."
-                                            value={formData.thumbnail}
-                                            onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
+                                            value={currentThumbnail}
+                                            onChange={(e) => setThumbnail(e.target.value)}
                                             className="h-10 rounded-xl bg-secondary border-border text-[11px] font-bold focus:bg-white"
                                         />
                                     </div>
@@ -1192,25 +1492,25 @@ function NewStoryPageContent() {
                                 <div className="grid grid-cols-2 gap-3">
                                     <button
                                         type="button"
-                                        onClick={() => setFormData({ ...formData, status: 'draft' })}
+                                        onClick={() => setStatus('draft')}
                                         className={cn(
                                             "relative h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 group",
-                                            formData.status === 'draft'
+                                            currentStatus === 'draft'
                                                 ? "border-amber-500 bg-amber-50 shadow-lg shadow-amber-100"
                                                 : "border-zinc-200 bg-white hover:border-amber-300 hover:bg-amber-50/30"
                                         )}
                                     >
                                         <Edit className={cn(
                                             "h-5 w-5 transition-colors",
-                                            formData.status === 'draft' ? "text-amber-600" : "text-zinc-400 group-hover:text-amber-500"
+                                            currentStatus === 'draft' ? "text-amber-600" : "text-zinc-400 group-hover:text-amber-500"
                                         )} />
                                         <span className={cn(
                                             "text-xs font-black uppercase tracking-wide transition-colors",
-                                            formData.status === 'draft' ? "text-amber-700" : "text-zinc-500 group-hover:text-amber-600"
+                                            currentStatus === 'draft' ? "text-amber-700" : "text-zinc-500 group-hover:text-amber-600"
                                         )}>
                                             Draft
                                         </span>
-                                        {formData.status === 'draft' && (
+                                        {currentStatus === 'draft' && (
                                             <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-amber-500 border-2 border-white flex items-center justify-center">
                                                 <CheckCircle2 className="h-3 w-3 text-white" />
                                             </div>
@@ -1219,25 +1519,25 @@ function NewStoryPageContent() {
 
                                     <button
                                         type="button"
-                                        onClick={() => setFormData({ ...formData, status: 'published' })}
+                                        onClick={() => setStatus('published')}
                                         className={cn(
                                             "relative h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 group",
-                                            formData.status === 'published'
+                                            currentStatus === 'published'
                                                 ? "border-emerald-500 bg-emerald-50 shadow-lg shadow-emerald-100"
                                                 : "border-zinc-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/30"
                                         )}
                                     >
                                         <Globe className={cn(
                                             "h-5 w-5 transition-colors",
-                                            formData.status === 'published' ? "text-emerald-600" : "text-zinc-400 group-hover:text-emerald-500"
+                                            currentStatus === 'published' ? "text-emerald-600" : "text-zinc-400 group-hover:text-emerald-500"
                                         )} />
                                         <span className={cn(
                                             "text-xs font-black uppercase tracking-wide transition-colors",
-                                            formData.status === 'published' ? "text-emerald-700" : "text-zinc-500 group-hover:text-emerald-600"
+                                            currentStatus === 'published' ? "text-emerald-700" : "text-zinc-500 group-hover:text-emerald-600"
                                         )}>
                                             Published
                                         </span>
-                                        {formData.status === 'published' && (
+                                        {currentStatus === 'published' && (
                                             <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center">
                                                 <CheckCircle2 className="h-3 w-3 text-white" />
                                             </div>
@@ -1245,9 +1545,9 @@ function NewStoryPageContent() {
                                     </button>
                                 </div>
                                 <p className="text-[10px] text-zinc-500 font-medium text-center pt-1">
-                                    {formData.status === 'draft'
-                                        ? "Draft stories are only visible in the admin panel"
-                                        : "Published stories are visible on the public website"}
+                                    {currentStatus === 'draft'
+                                        ? "Drafts are only visible in the admin panel"
+                                        : "Published items are visible on the public website"}
                                 </p>
                             </CardContent>
                         </Card>
@@ -1274,14 +1574,14 @@ function NewStoryPageContent() {
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Meta Title</Label>
                                     <Input
-                                        value={formData.meta_title}
-                                        onChange={(e) => setFormData({ ...formData, meta_title: e.target.value })}
+                                        value={currentSEO.meta_title}
+                                        onChange={(e) => setSEO('meta_title', e.target.value)}
                                         className="h-10 text-xs font-bold rounded-xl border-border bg-secondary focus:bg-white"
                                         placeholder="SEO-optimized title (max 60 chars)"
                                     />
                                     <div className="flex justify-end">
-                                        <span className={cn("text-[9px] font-bold", formData.meta_title.length > 60 ? "text-rose-500" : "text-zinc-300")}>
-                                            {formData.meta_title.length}/60
+                                        <span className={cn("text-[9px] font-bold", currentSEO.meta_title.length > 60 ? "text-rose-500" : "text-zinc-300")}>
+                                            {currentSEO.meta_title.length}/60
                                         </span>
                                     </div>
                                 </div>
@@ -1289,70 +1589,74 @@ function NewStoryPageContent() {
                                     <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Meta Description</Label>
                                     <Textarea
                                         className="min-h-[90px] text-xs font-bold rounded-xl border-zinc-200 bg-zinc-50/50 focus:bg-white resize-none"
-                                        value={formData.meta_description}
-                                        onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
+                                        value={currentSEO.meta_description}
+                                        onChange={(e) => setSEO('meta_description', e.target.value)}
                                         placeholder="SEO-optimized description (max 160 chars)"
                                     />
                                     <div className="flex justify-end">
-                                        <span className={cn("text-[9px] font-bold", formData.meta_description.length > 160 ? "text-rose-500" : "text-zinc-300")}>
-                                            {formData.meta_description.length}/160
+                                        <span className={cn("text-[9px] font-bold", currentSEO.meta_description.length > 160 ? "text-rose-500" : "text-zinc-300")}>
+                                            {currentSEO.meta_description.length}/160
                                         </span>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Meta Keywords</Label>
                                     <Input
-                                        value={formData.meta_keywords}
-                                        onChange={(e) => setFormData({ ...formData, meta_keywords: e.target.value })}
+                                        value={currentSEO.meta_keywords}
+                                        onChange={(e) => setSEO('meta_keywords', e.target.value)}
                                         className="h-10 text-xs font-bold rounded-xl border-border bg-secondary focus:bg-white"
                                         placeholder="Keywords, separated, by, commas"
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Image Alt Text</Label>
-                                    <Input
-                                        value={formData.image_alt}
-                                        onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
-                                        className="h-10 text-xs font-bold rounded-xl border-border bg-secondary focus:bg-white"
-                                        placeholder="Descriptive alt text for featured image"
-                                    />
-                                </div>
+                                {isStory && (
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Image Alt Text</Label>
+                                        <Input
+                                            value={formData.image_alt}
+                                            onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
+                                            className="h-10 text-xs font-bold rounded-xl border-border bg-secondary focus:bg-white"
+                                            placeholder="Descriptive alt text for featured image"
+                                        />
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
                         {/* Publishing Options */}
-                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
-                            <CardContent className="p-5 space-y-5">
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-1">
-                                        <div className="text-sm font-black text-zinc-900">Featured Story</div>
-                                        <div className="text-[11px] text-zinc-500 font-medium">Highlight on homepage</div>
+                        {isStory && (
+                            <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                <CardContent className="p-5 space-y-5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            <div className="text-sm font-black text-zinc-900">Featured Story</div>
+                                            <div className="text-[11px] text-zinc-500 font-medium">Highlight on homepage</div>
+                                        </div>
+                                        <Switch
+                                            checked={formData.isFeatured}
+                                            onCheckedChange={(checked) => setFormData({ ...formData, isFeatured: checked })}
+                                            className="data-[state=checked]:bg-indigo-600 transition-all"
+                                        />
                                     </div>
-                                    <Switch
-                                        checked={formData.isFeatured}
-                                        onCheckedChange={(checked) => setFormData({ ...formData, isFeatured: checked })}
-                                        className="data-[state=checked]:bg-indigo-600 transition-all"
-                                    />
-                                </div>
 
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-1">
-                                        <div className="text-sm font-black text-zinc-900">Table of Contents</div>
-                                        <div className="text-[11px] text-zinc-500 font-medium">Show automated TOC on page</div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            <div className="text-sm font-black text-zinc-900">Table of Contents</div>
+                                            <div className="text-[11px] text-zinc-500 font-medium">Show automated TOC on page</div>
+                                        </div>
+                                        <Switch
+                                            checked={formData.show_table_of_contents}
+                                            onCheckedChange={(checked) => setFormData({ ...formData, show_table_of_contents: checked })}
+                                            className="data-[state=checked]:bg-emerald-600 transition-all"
+                                        />
                                     </div>
-                                    <Switch
-                                        checked={formData.show_table_of_contents}
-                                        onCheckedChange={(checked) => setFormData({ ...formData, show_table_of_contents: checked })}
-                                        className="data-[state=checked]:bg-emerald-600 transition-all"
-                                    />
-                                </div>
-                                <div className="pt-4 border-t border-zinc-100">
-                                    <div className="flex items-center gap-3 justify-center text-xs font-bold text-emerald-600 bg-emerald-50 py-3 rounded-xl border border-emerald-100">
-                                        <CheckCircle2 className="h-4 w-4" /> Ready to Publish
+                                    <div className="pt-4 border-t border-zinc-100">
+                                        <div className="flex items-center gap-3 justify-center text-xs font-bold text-emerald-600 bg-emerald-50 py-3 rounded-xl border border-emerald-100">
+                                            <CheckCircle2 className="h-4 w-4" /> Ready to Publish
+                                        </div>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 </div>
             </div>

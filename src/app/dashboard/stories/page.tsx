@@ -37,6 +37,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function StoriesPage() {
     const router = useRouter();
@@ -50,6 +60,7 @@ export default function StoriesPage() {
     const [cities, setCities] = useState<City[]>([]);
     const [pagination, setPagination] = useState<PaginatedResponse<Story> | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [storyToDelete, setStoryToDelete] = useState<Story | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
     const pageSize = 15;
 
@@ -81,11 +92,14 @@ export default function StoriesPage() {
         }
     };
 
-    const handleDelete = async (story: Story) => {
+    const handleDelete = (story: Story) => {
+        setStoryToDelete(story);
+    };
+
+    const confirmDelete = async (story: Story) => {
         if (!story.id) return;
-        const ok = window.confirm(`Permanently delete "${story.title}"?`);
-        if (!ok) return;
         setDeletingId(story.id);
+        setStoryToDelete(null);
         try {
             await deleteStory(story.id);
             await loadStories();
@@ -101,30 +115,55 @@ export default function StoriesPage() {
         <div className="min-h-screen bg-white text-zinc-900 font-sans pb-10">
             <div className="max-w-[1400px] mx-auto p-4 lg:p-8 space-y-6 flex flex-col min-h-[85vh]">
 
-                {/* ── HEADER ── */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-zinc-50 border border-zinc-100 shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <div className="h-11 w-11 rounded-xl bg-violet-600 flex items-center justify-center shadow-md shadow-violet-200">
-                            <BookOpen className="h-5 w-5 text-white" />
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-3xl bg-white border border-zinc-100 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center gap-5">
+                        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-100 shrink-0">
+                            <BookOpen className="h-6 w-6 text-white" />
                         </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Content</p>
-                            <h1 className="text-xl font-bold tracking-tight text-zinc-900">Stories</h1>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-0.5">Content Hub</span>
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-2xl font-black tracking-tight text-zinc-900">
+                                    Stories
+                                </h1>
+                                <div className="h-4 w-px bg-zinc-200 mx-1" />
+                                <div className="flex items-center gap-1.5 bg-zinc-100/50 p-1 rounded-xl border border-zinc-100">
+                                    <button
+                                        onClick={() => router.push("/dashboard/stories")}
+                                        className="px-3 py-1.5 rounded-lg bg-white text-violet-600 text-[10px] font-black uppercase tracking-widest border border-zinc-200 shadow-sm transition-all"
+                                    >
+                                        Stories
+                                    </button>
+                                    <button
+                                        onClick={() => router.push("/dashboard/startups")}
+                                        className="px-3 py-1.5 rounded-lg text-zinc-400 text-[10px] font-black uppercase tracking-widest hover:text-zinc-600 transition-all"
+                                    >
+                                        Startups
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="hidden sm:flex flex-col items-end mr-1">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total</span>
-                            <span className="text-lg font-black text-zinc-900 tabular-nums">{pagination?.count ?? 0}</span>
+
+                    <div className="flex items-center gap-6">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Stories</span>
+                            <span className="text-2xl font-black text-zinc-900 tabular-nums leading-none mt-1">
+                                {pagination?.count ?? 0}
+                            </span>
                         </div>
-                        <button
-                            onClick={() => router.push("/dashboard/stories/new")}
-                            className="flex items-center gap-2 h-10 px-5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm shadow-violet-200"
-                            suppressHydrationWarning
-                        >
-                            <Plus size={15} strokeWidth={2.5} />
-                            New Story
-                        </button>
+
+                        <div className="h-10 w-px bg-zinc-100 mx-1" />
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => router.push("/dashboard/stories/new")}
+                                className="flex items-center gap-2 h-11 px-6 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-violet-200"
+                            >
+                                <Plus size={14} strokeWidth={3} />
+                                New Story
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -338,6 +377,31 @@ export default function StoriesPage() {
                     </div>
                 )}
             </div>
+
+            <AlertDialog open={!!storyToDelete} onOpenChange={(open) => !open && setStoryToDelete(null)}>
+                <AlertDialogContent className="rounded-2xl border-zinc-100 shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-bold text-zinc-900 font-serif">
+                            Delete Narrative
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-500 text-sm">
+                            Are you sure you want to delete <span className="font-bold text-zinc-900">"{storyToDelete?.title}"</span>?
+                            This will permanently remove the story and its association with any startups.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-xl border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-all font-bold text-xs uppercase tracking-widest">
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => storyToDelete && confirmDelete(storyToDelete)}
+                            className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition-all font-bold text-xs uppercase tracking-widest px-6"
+                        >
+                            Confirm Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

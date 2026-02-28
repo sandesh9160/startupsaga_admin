@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import {
     Users,
     Mail,
-    Calendar,
+    // Calendar,
     Search,
     Download,
     Trash2,
-    CheckCircle,
-    XCircle,
+    // CheckCircle,
+    // XCircle,
     Clock,
     Layout,
     Type,
@@ -17,25 +17,50 @@ import {
     Palette,
     Save,
     ExternalLink,
-    RefreshCw
+    RefreshCw,
+    Ban,
+    Shield,
+    // ShieldAlert
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { getNewsletterSubscribers, newsletterTemplatesApi, getTrendingStories } from "@/lib/api";
+import {
+    getNewsletterSubscribers,
+    newsletterTemplatesApi,
+    getTrendingStories,
+    API_BASE_URL,
+    deleteNewsletterSubscriber,
+    toggleBlockSubscriber,
+    sendTestAdminAlert
+} from "@/lib/api";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RichTextEditor } from "@/components/dashboard/RichTextEditor";
 
 export default function NewsletterPage() {
     // --- State for Subscribers ---
     const [subscribers, setSubscribers] = useState<any[]>([]);
+    const [subscriberToDelete, setSubscriberToDelete] = useState<{ id: number, email: string } | null>(null);
     const [isLoadingSubscribers, setIsLoadingSubscribers] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [isRefreshingSubscribers, setIsRefreshingSubscribers] = useState(false);
+    const [isSendingTest, setIsSendingTest] = useState(false);
+    const [previewMode, setPreviewMode] = useState<"weekly" | "admin">("weekly");
 
     // --- State for Templates ---
     const [templates, setTemplates] = useState<any[]>([]);
@@ -67,15 +92,40 @@ export default function NewsletterPage() {
             setTemplates(data);
             const active = data.find((t: any) => t.is_active) || data[0];
             if (active) {
-                // Fetch full detail for the active one
                 const detail = await newsletterTemplatesApi.get(active.id);
                 setActiveTemplate(detail);
+            } else {
+                // Initialize a default local template if none exists
+                setActiveTemplate({
+                    name: "Default Newsletter",
+                    subject_format: "StartupSaga Weekly: {first_story_title}",
+                    header_title: "StartupSaga",
+                    header_subtitle: "Weekly stories, founder insights, and ecosystem updates",
+                    body_intro: "Top Stories This Week",
+                    body_text: "Welcome to our weekly community roundup! We've gathered the most impactful stories and insights to keep you ahead in the startup ecosystem.",
+                    footer_text: "© {year} StartupSaga. All rights reserved.\nYou received this email because you subscribed to our newsletter.",
+                    accent_color: "#9333ea",
+                    is_active: true,
+                    font_family: "'Inter', sans-serif"
+                });
             }
         } catch (err) {
             console.error(err);
             toast.error("Failed to fetch templates");
         } finally {
             setIsLoadingTemplates(false);
+        }
+    };
+
+    const handleSendTestAlert = async () => {
+        setIsSendingTest(true);
+        try {
+            await sendTestAdminAlert();
+            toast.success("Test admin alert sent! Please check your inbox.");
+        } catch (err) {
+            toast.error("Failed to send test email. Check server configuration.");
+        } finally {
+            setIsSendingTest(false);
         }
     };
 
@@ -98,7 +148,11 @@ export default function NewsletterPage() {
         if (!activeTemplate) return;
         setIsSavingTemplate(true);
         try {
-            await newsletterTemplatesApi.update(activeTemplate.id, activeTemplate);
+            if (activeTemplate.id) {
+                await newsletterTemplatesApi.update(activeTemplate.id, activeTemplate);
+            } else {
+                await newsletterTemplatesApi.create(activeTemplate);
+            }
             toast.success("Newsletter settings updated successfully");
             loadTemplates();
         } catch (err) {
@@ -106,6 +160,32 @@ export default function NewsletterPage() {
             toast.error("Failed to save template");
         } finally {
             setIsSavingTemplate(false);
+        }
+    };
+
+    const handleToggleBlock = async (id: number, email: string) => {
+        try {
+            await toggleBlockSubscriber(id);
+            toast.success(`Updated block status for ${email}`);
+            loadSubscribers(false);
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to update block status");
+        }
+    };
+
+    const handleDeleteSubscriber = (id: number, email: string) => {
+        setSubscriberToDelete({ id, email });
+    };
+
+    const confirmDeleteSubscriber = async (id: number, email: string) => {
+        try {
+            await deleteNewsletterSubscriber(id);
+            toast.success(`Deleted ${email}`);
+            loadSubscribers(false);
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to delete subscriber");
         }
     };
 
@@ -233,14 +313,20 @@ export default function NewsletterPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-2.5 text-center">
-                                                        <Badge className={cn(
-                                                            "text-[9px] font-black py-0 h-5 px-2.5 rounded-full border shadow-sm uppercase tracking-tight",
-                                                            sub.is_active
-                                                                ? "bg-emerald-50 text-emerald-600 border-emerald-100/50"
-                                                                : "bg-rose-50 text-rose-600 border-rose-100/50"
-                                                        )}>
-                                                            {sub.is_active ? "Active" : "Inactive"}
-                                                        </Badge>
+                                                        {sub.is_blocked ? (
+                                                            <Badge className="text-[9px] font-black py-0 h-5 px-2.5 rounded-full border shadow-sm uppercase tracking-tight bg-zinc-900 text-white border-zinc-900">
+                                                                Blocked
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge className={cn(
+                                                                "text-[9px] font-black py-0 h-5 px-2.5 rounded-full border shadow-sm uppercase tracking-tight",
+                                                                sub.is_active
+                                                                    ? "bg-emerald-50 text-emerald-600 border-emerald-100/50"
+                                                                    : "bg-rose-50 text-rose-600 border-rose-100/50"
+                                                            )}>
+                                                                {sub.is_active ? "Active" : "Inactive"}
+                                                            </Badge>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-2.5 text-center">
                                                         <div className="flex items-center justify-center gap-2 text-[12px] font-medium text-zinc-400">
@@ -248,9 +334,26 @@ export default function NewsletterPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-2.5 text-right">
-                                                        <button className="h-8 w-8 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-all inline-flex border border-transparent hover:border-rose-100">
-                                                            <Trash2 size={14} />
-                                                        </button>
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={() => handleToggleBlock(sub.id, sub.email)}
+                                                                title={sub.is_blocked ? "Unblock User" : "Block User"}
+                                                                className={cn(
+                                                                    "h-8 w-8 rounded-lg flex items-center justify-center transition-all border",
+                                                                    sub.is_blocked
+                                                                        ? "text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100"
+                                                                        : "text-zinc-400 hover:text-amber-600 hover:bg-amber-50 border-transparent hover:border-amber-100"
+                                                                )}
+                                                            >
+                                                                {sub.is_blocked ? <Shield size={14} /> : <Ban size={14} />}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteSubscriber(sub.id, sub.email)}
+                                                                className="h-8 w-8 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-all border border-transparent hover:border-rose-100"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </motion.tr>
                                             ))}
@@ -294,14 +397,34 @@ export default function NewsletterPage() {
                         ) : (
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                 {/* -- CONFIGURATOR -- */}
-                                <div className="lg:col-span-4 space-y-4">
-                                    <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-6">
+                                <div className="lg:col-span-5 space-y-3">
+                                    <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm space-y-4">
                                         <div className="space-y-1">
-                                            <h3 className="text-sm font-bold flex items-center gap-2">
-                                                <Layout className="h-4 w-4 text-purple-600" />
-                                                Visual Design
-                                            </h3>
-                                            <p className="text-[10px] text-zinc-400 font-medium">Customize the look and feel of your emails.</p>
+                                            <div className="flex items-center justify-between gap-2 mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="p-1.5 rounded-lg bg-zinc-50 text-zinc-900 border border-zinc-200">
+                                                        <Palette className="h-4 w-4" />
+                                                    </div>
+                                                    <h3 className="text-[12px] font-black uppercase tracking-widest text-zinc-900">
+                                                        {previewMode === "weekly" ? "Weekly Design" : "Admin Design"}
+                                                    </h3>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleSendTestAlert}
+                                                    disabled={isSendingTest}
+                                                    className="h-8 text-[10px] font-black uppercase tracking-widest border-purple-100 hover:bg-purple-50 text-purple-600 gap-2"
+                                                >
+                                                    {isSendingTest ? <Clock className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+                                                    Test Admin Alert
+                                                </Button>
+                                            </div>
+                                            <p className="text-[10px] text-zinc-400 font-medium">
+                                                {previewMode === "weekly"
+                                                    ? "Customize the look and feel of your customer-facing newsletters."
+                                                    : "Customize how internal automation alerts appear in your inbox."}
+                                            </p>
                                         </div>
 
                                         <div className="space-y-4">
@@ -314,12 +437,12 @@ export default function NewsletterPage() {
                                                         type="color"
                                                         value={activeTemplate.accent_color}
                                                         onChange={(e) => setActiveTemplate({ ...activeTemplate, accent_color: e.target.value })}
-                                                        className="h-10 w-10 rounded-xl cursor-pointer border border-zinc-200 p-0 overflow-hidden shrink-0"
+                                                        className="h-8 w-8 rounded-lg cursor-pointer border border-zinc-200 p-0 overflow-hidden shrink-0"
                                                     />
                                                     <Input
                                                         value={activeTemplate.accent_color}
                                                         onChange={(e) => setActiveTemplate({ ...activeTemplate, accent_color: e.target.value })}
-                                                        className="h-10 text-[12px] font-bold font-mono px-3"
+                                                        className="h-8 text-[11px] font-bold font-mono px-2"
                                                     />
                                                 </div>
                                             </div>
@@ -334,11 +457,11 @@ export default function NewsletterPage() {
                                                             value={activeTemplate.logo_url || ""}
                                                             placeholder="https://..."
                                                             onChange={(e) => setActiveTemplate({ ...activeTemplate, logo_url: e.target.value })}
-                                                            className="h-10 text-[12px] font-bold px-3 flex-1"
+                                                            className="h-8 text-[11px] font-bold px-2 flex-1"
                                                         />
                                                         <Button
                                                             variant="secondary"
-                                                            className="h-10 px-4 text-[11px] font-bold rounded-lg shrink-0"
+                                                            className="h-8 px-3 text-[10px] font-bold rounded-lg shrink-0"
                                                             onClick={() => document.getElementById('logo-upload')?.click()}
                                                         >
                                                             Upload
@@ -385,7 +508,7 @@ export default function NewsletterPage() {
                                                 <select
                                                     value={activeTemplate.font_family}
                                                     onChange={(e) => setActiveTemplate({ ...activeTemplate, font_family: e.target.value })}
-                                                    className="w-full h-10 px-3 bg-white border border-zinc-200 rounded-lg text-[12px] font-bold appearance-none transition-all hover:border-purple-300 focus:ring-2 focus:ring-purple-500/10 outline-none"
+                                                    className="w-full h-8 px-2 bg-white border border-zinc-200 rounded-lg text-[11px] font-bold appearance-none transition-all hover:border-purple-300 focus:ring-2 focus:ring-purple-500/10 outline-none"
                                                 >
                                                     <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">System Default</option>
                                                     <option value="'Inter', sans-serif">Inter</option>
@@ -399,21 +522,23 @@ export default function NewsletterPage() {
 
                                         <div className="space-y-4 pt-1 border-t border-zinc-100">
                                             <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Subject Format</label>
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                                                    {previewMode === "weekly" ? "Weekly Subject Format" : "Alert Subject Format"}
+                                                </label>
                                                 <Input
                                                     value={activeTemplate.subject_format}
                                                     onChange={(e) => setActiveTemplate({ ...activeTemplate, subject_format: e.target.value })}
-                                                    className="h-10 text-[12px] font-bold bg-zinc-50 border-transparent"
+                                                    className="h-9 text-[11px] font-bold bg-zinc-50 border-transparent"
                                                 />
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-2 gap-4 pb-4 border-b border-zinc-50">
                                                 <div className="space-y-1.5">
                                                     <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Header Title</label>
                                                     <Input
                                                         value={activeTemplate.header_title}
                                                         onChange={(e) => setActiveTemplate({ ...activeTemplate, header_title: e.target.value })}
-                                                        className="h-10 text-[12px] font-bold"
+                                                        className="h-8 text-[11px] font-bold"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
@@ -421,34 +546,51 @@ export default function NewsletterPage() {
                                                     <Input
                                                         value={activeTemplate.header_subtitle}
                                                         onChange={(e) => setActiveTemplate({ ...activeTemplate, header_subtitle: e.target.value })}
-                                                        className="h-10 text-[12px] font-bold"
+                                                        className="h-8 text-[11px] font-bold"
                                                     />
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Section Title (Intro)</label>
-                                                <Input
-                                                    value={activeTemplate.body_intro}
-                                                    onChange={(e) => setActiveTemplate({ ...activeTemplate, body_intro: e.target.value })}
-                                                    className="h-10 text-[12px] font-bold"
-                                                />
-                                            </div>
+                                            <div className="space-y-3 pt-1">
+                                                <div className="space-y-1">
+                                                    <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                                                        {previewMode === "weekly" ? "Section Title (Intro)" : "Alert Badge Text"}
+                                                    </label>
+                                                    <Input
+                                                        value={activeTemplate.body_intro}
+                                                        onChange={(e) => setActiveTemplate({ ...activeTemplate, body_intro: e.target.value })}
+                                                        className="h-8 text-[11px] font-bold"
+                                                    />
+                                                </div>
 
-                                            <div className="space-y-1.5">
-                                                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Footer Text</label>
-                                                <Textarea
-                                                    value={activeTemplate.footer_text}
-                                                    onChange={(e) => setActiveTemplate({ ...activeTemplate, footer_text: e.target.value })}
-                                                    className="text-[12px] font-bold resize-none h-24 rounded-lg"
-                                                />
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                                                        {previewMode === "weekly" ? "Newsletter Body Message" : "Alert Notification Body"}
+                                                    </label>
+                                                    <div className="min-h-[300px] max-h-[500px] border rounded-xl overflow-hidden border-zinc-200">
+                                                        <RichTextEditor
+                                                            content={activeTemplate.body_text || ""}
+                                                            onChange={(html) => setActiveTemplate({ ...activeTemplate, body_text: html })}
+                                                            placeholder={previewMode === "weekly" ? "Enter main newsletter content..." : "Enter admin notification message..."}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Footer Text</label>
+                                                    <Textarea
+                                                        value={activeTemplate.footer_text}
+                                                        onChange={(e) => setActiveTemplate({ ...activeTemplate, footer_text: e.target.value })}
+                                                        className="text-[11px] font-medium resize-none h-24 rounded-lg border-zinc-200"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
 
                                         <Button
                                             onClick={handleSaveTemplate}
                                             disabled={isSavingTemplate}
-                                            className="w-full h-11 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white font-bold text-sm gap-2 active:scale-95 transition-all mt-4"
+                                            className="w-full h-9 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white font-bold text-[13px] gap-2 active:scale-95 transition-all mt-2"
                                         >
                                             {isSavingTemplate ? (
                                                 <Clock className="animate-spin h-3 w-3" />
@@ -461,16 +603,38 @@ export default function NewsletterPage() {
                                 </div>
 
                                 {/* -- LIVE PREVIEW -- */}
-                                <div className="lg:col-span-8 sticky top-4">
+                                <div className="lg:col-span-7 sticky top-4">
                                     <div className="bg-zinc-100 p-1 rounded-[24px] shadow-sm border border-zinc-200">
                                         <div className="bg-white px-4 py-2 flex items-center justify-between rounded-t-[20px] border-b border-zinc-100">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="h-2 w-2 rounded-full bg-zinc-200" />
-                                                <div className="h-2 w-2 rounded-full bg-zinc-200" />
-                                                <div className="h-2 w-2 rounded-full bg-zinc-200" />
+                                            <div className="flex items-center gap-1.5 overflow-hidden">
+                                                <div
+                                                    onClick={() => setPreviewMode("weekly")}
+                                                    className={cn(
+                                                        "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2",
+                                                        previewMode === "weekly" ? "bg-zinc-950 text-white shadow-lg shadow-zinc-950/20" : "bg-transparent text-zinc-400 hover:text-zinc-600"
+                                                    )}
+                                                >
+                                                    <Mail size={12} />
+                                                    Weekly
+                                                </div>
+                                                <div
+                                                    onClick={() => setPreviewMode("admin")}
+                                                    className={cn(
+                                                        "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2",
+                                                        previewMode === "admin" ? "bg-zinc-950 text-white shadow-lg shadow-zinc-950/20" : "bg-transparent text-zinc-400 hover:text-zinc-600"
+                                                    )}
+                                                >
+                                                    <Shield size={12} />
+                                                    Admin
+                                                </div>
                                             </div>
                                             <div className="flex-1 max-w-[280px] mx-auto bg-zinc-50 py-1 rounded-lg text-center border border-zinc-100">
-                                                <p className="text-[9px] font-mono text-zinc-400 truncate px-3">Subject: {activeTemplate.subject_format.replace('{first_story_title}', 'Startup News')}</p>
+                                                <p className="text-[9px] font-mono text-zinc-400 truncate px-3">
+                                                    {previewMode === "weekly"
+                                                        ? `Subject: ${activeTemplate.subject_format.replace('{first_story_title}', 'Startup News')}`
+                                                        : "Subject: StartupSaga: New Subscriber Alert"
+                                                    }
+                                                </p>
                                             </div>
                                             <div className="w-10 flex justify-end">
                                                 <ExternalLink size={12} className="text-zinc-300" />
@@ -479,89 +643,162 @@ export default function NewsletterPage() {
 
                                         <div className="bg-zinc-50 rounded-b-[20px] overflow-hidden min-h-[500px] flex flex-col p-4 sm:p-6" style={{ fontFamily: activeTemplate.font_family }}>
                                             {/* Preview Container (Simulating Mail Client) */}
-                                            <div className="max-w-md mx-auto w-full bg-white rounded-xl shadow-sm border border-zinc-200 flex flex-col overflow-hidden">
+                                            <div className="max-w-xl mx-auto w-full bg-white rounded-xl shadow-sm border border-zinc-200 flex flex-col overflow-hidden">
 
-                                                {/* Email Header */}
-                                                <div className="p-6 text-center border-b border-zinc-50" style={{ borderTop: `4px solid ${activeTemplate.accent_color}` }}>
-                                                    {activeTemplate.logo_url ? (
-                                                        <img src={activeTemplate.logo_url} alt="Logo" className="h-7 mx-auto mb-4 object-contain" />
-                                                    ) : (
-                                                        <div className="h-8 w-8 rounded-lg bg-zinc-950 flex items-center justify-center mx-auto mb-3 text-white font-black text-sm">S</div>
-                                                    )}
-                                                    <h1 className="text-lg font-black text-zinc-950 mb-1">{activeTemplate.header_title}</h1>
-                                                    <p className="text-zinc-500 text-[11px]">{activeTemplate.header_subtitle}</p>
-                                                </div>
-
-                                                {/* Email Body */}
-                                                <div className="p-6 space-y-6">
-                                                    <div className="space-y-3">
-                                                        <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{activeTemplate.body_intro || "Weekly Roundup"}</h2>
-                                                        <div className="space-y-3">
-                                                            {trendingStories.length > 0 ? (
-                                                                trendingStories.map((story) => (
-                                                                    <div key={story.id} className="group rounded-xl border border-zinc-100 bg-zinc-50/50 p-3 flex gap-3.5 transition-all hover:bg-white hover:shadow-md hover:border-zinc-200">
-                                                                        <div className="h-16 w-16 rounded-lg bg-zinc-200 flex-shrink-0 overflow-hidden border border-zinc-100">
-                                                                            {story.featured_image ? (
-                                                                                <img src={story.featured_image} alt={story.title} className="h-full w-full object-cover" />
-                                                                            ) : (
-                                                                                <div className="h-full w-full bg-zinc-100 flex items-center justify-center text-zinc-300">
-                                                                                    <ImageIcon size={20} />
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                        <div className="space-y-1 flex-1 min-w-0">
-                                                                            <div
-                                                                                className="inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest mb-1"
-                                                                                style={{ backgroundColor: `${activeTemplate.accent_color}15`, color: activeTemplate.accent_color }}
-                                                                            >
-                                                                                {story.category?.name || "Startup Story"}
-                                                                            </div>
-                                                                            <h3 className="text-xs font-black text-zinc-900 leading-tight truncate">{story.title}</h3>
-                                                                            <p className="text-[10px] font-medium text-zinc-500 line-clamp-2 leading-snug">{story.excerpt}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                ))
+                                                {previewMode === "weekly" ? (
+                                                    <>
+                                                        {/* Email Header */}
+                                                        <div className="p-6 text-center border-b border-zinc-50" style={{ borderTop: `4px solid ${activeTemplate.accent_color}` }}>
+                                                            {activeTemplate.logo_url ? (
+                                                                <img src={activeTemplate.logo_url} alt="Logo" className="h-7 mx-auto mb-4 object-contain" />
                                                             ) : (
-                                                                <div className="space-y-3">
-                                                                    {/* Skeleton placeholders if no actual stories yet */}
-                                                                    <div className="group rounded-xl border border-zinc-100 bg-zinc-50/50 p-4 flex gap-3">
-                                                                        <div className="h-16 w-16 rounded-lg bg-zinc-200 flex-shrink-0 animate-pulse" />
-                                                                        <div className="space-y-1.5 flex-1">
-                                                                            <div className="h-2.5 w-16 rounded bg-purple-100 mb-1.5" />
-                                                                            <div className="h-4 w-full rounded bg-zinc-200" />
-                                                                            <div className="h-4 w-2/3 rounded bg-zinc-200" />
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
+                                                                <div className="h-8 w-8 rounded-lg bg-zinc-950 flex items-center justify-center mx-auto mb-3 text-white font-black text-sm">S</div>
                                                             )}
-                                                        </div>
-                                                    </div>
 
-                                                    <div className="pt-2 text-center">
-                                                        <div
-                                                            className="inline-block px-6 py-2.5 rounded-full text-white font-black text-[11px] shadow-lg"
-                                                            style={{ backgroundColor: activeTemplate.accent_color }}
-                                                        >
-                                                            Discover More Stories
+                                                            {!activeTemplate.logo_url && (
+                                                                <h1 className="text-lg font-black text-zinc-950 mb-1 leading-none tracking-tight">{activeTemplate.header_title}</h1>
+                                                            )}
+                                                            <p className="text-zinc-500 text-[11px] font-medium max-w-[200px] mx-auto leading-tight">{activeTemplate.header_subtitle}</p>
                                                         </div>
-                                                    </div>
-                                                </div>
 
-                                                {/* Email Footer */}
-                                                <div className="p-6 bg-zinc-50 text-center border-t border-zinc-100">
-                                                    <p className="text-[10px] font-medium text-zinc-400 leading-relaxed whitespace-pre-wrap mb-3">
-                                                        {activeTemplate.footer_text.replace('{year}', '2026')}
-                                                    </p>
-                                                    <div className="flex items-center justify-center gap-3">
-                                                        <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">Unsubscribe</span>
-                                                        <div className="h-0.5 w-0.5 rounded-full bg-zinc-200" />
-                                                        <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">Privacy</span>
-                                                    </div>
-                                                </div>
+                                                        {/* Email Body */}
+                                                        <div className="p-6 space-y-6">
+                                                            <div className="space-y-4">
+                                                                <h2 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{activeTemplate.body_intro || "Weekly Roundup"}</h2>
+
+                                                                {activeTemplate.body_text && (
+                                                                    <div
+                                                                        className="prose prose-sm prose-zinc max-w-none newsletter-content text-zinc-600"
+                                                                        dangerouslySetInnerHTML={{ __html: activeTemplate.body_text }}
+                                                                    />
+                                                                )}
+
+                                                                <div className="space-y-3">
+                                                                    {trendingStories.length > 0 ? (
+                                                                        trendingStories.map((story) => (
+                                                                            <div key={story.id} className="group rounded-xl border border-zinc-100 bg-zinc-50/50 p-3 flex gap-3.5 transition-all hover:bg-white hover:shadow-md hover:border-zinc-200">
+                                                                                <div className="h-16 w-16 rounded-lg bg-zinc-200 flex-shrink-0 overflow-hidden border border-zinc-100">
+                                                                                    {story.featured_image ? (
+                                                                                        <img src={story.featured_image} alt={story.title} className="h-full w-full object-cover" />
+                                                                                    ) : (
+                                                                                        <div className="h-full w-full bg-zinc-100 flex items-center justify-center text-zinc-300">
+                                                                                            <ImageIcon size={20} />
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="space-y-1 flex-1 min-w-0">
+                                                                                    <div
+                                                                                        className="inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest mb-1"
+                                                                                        style={{ backgroundColor: `${activeTemplate.accent_color}15`, color: activeTemplate.accent_color }}
+                                                                                    >
+                                                                                        {story.category?.name || "Startup Story"}
+                                                                                    </div>
+                                                                                    <h3 className="text-xs font-black text-zinc-900 leading-tight truncate">{story.title}</h3>
+                                                                                    <p className="text-[10px] font-medium text-zinc-500 line-clamp-2 leading-snug">{story.excerpt}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="space-y-3">
+                                                                            <div className="group rounded-xl border border-zinc-100 bg-zinc-50/50 p-4 flex gap-3">
+                                                                                <div className="h-16 w-16 rounded-lg bg-zinc-200 flex-shrink-0 animate-pulse" />
+                                                                                <div className="space-y-1.5 flex-1">
+                                                                                    <div className="h-2.5 w-16 rounded bg-purple-100 mb-1.5" />
+                                                                                    <div className="h-4 w-full rounded bg-zinc-200" />
+                                                                                    <div className="h-4 w-2/3 rounded bg-zinc-200" />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="pt-2 text-center">
+                                                                <div
+                                                                    className="inline-block px-6 py-2.5 rounded-full text-white font-black text-[11px] shadow-lg"
+                                                                    style={{ backgroundColor: activeTemplate.accent_color }}
+                                                                >
+                                                                    Discover More Stories
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Email Footer */}
+                                                        <div className="p-8 bg-zinc-50 text-center border-t border-zinc-100 flex flex-col items-center gap-4">
+                                                            <div className="flex items-center gap-2 opacity-30 grayscale mb-2">
+                                                                {activeTemplate.logo_url ? (
+                                                                    <img src={activeTemplate.logo_url} alt="Logo" className="h-4 object-contain" />
+                                                                ) : (
+                                                                    <div className="h-5 w-5 rounded bg-zinc-950 flex items-center justify-center text-white font-black text-[8px]">S</div>
+                                                                )}
+                                                                <span className="text-[10px] font-black tracking-tighter text-zinc-900">{activeTemplate.header_title}</span>
+                                                            </div>
+                                                            <p className="text-[10px] font-medium text-zinc-400 leading-relaxed whitespace-pre-wrap max-w-[280px]">
+                                                                {activeTemplate.footer_text.replace('{year}', '2026')}
+                                                            </p>
+                                                            <div className="h-px w-12 bg-zinc-200 my-1" />
+                                                            <div className="flex items-center justify-center gap-4">
+                                                                <button className="text-[9px] font-black text-zinc-300 uppercase tracking-widest hover:text-zinc-500 transition-colors">Unsubscribe</button>
+                                                                <div className="h-1 w-1 rounded-full bg-zinc-200" />
+                                                                <button className="text-[9px] font-black text-zinc-300 uppercase tracking-widest hover:text-zinc-500 transition-colors">Preferences</button>
+                                                                <div className="h-1 w-1 rounded-full bg-zinc-200" />
+                                                                <button className="text-[9px] font-black text-zinc-300 uppercase tracking-widest hover:text-zinc-500 transition-colors">Privacy</button>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        {/* Admin Alert Header */}
+                                                        <div className="p-10 text-center border-b border-zinc-50" style={{ borderTop: `6px solid ${activeTemplate.accent_color}` }}>
+                                                            {activeTemplate.logo_url ? (
+                                                                <img src={activeTemplate.logo_url} alt="Logo" className="h-6 mx-auto mb-6 object-contain" />
+                                                            ) : (
+                                                                <div className="text-xl font-black text-zinc-950 mb-4 tracking-tighter text-center">StartupSaga</div>
+                                                            )}
+                                                            <h1 className="text-lg font-black text-zinc-950 tracking-tight">Admin Alert: New Subscriber</h1>
+                                                        </div>
+
+                                                        {/* Admin Alert Body */}
+                                                        <div className="p-10 text-center space-y-6">
+                                                            <div
+                                                                className="inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest"
+                                                                style={{ backgroundColor: `${activeTemplate.accent_color}15`, color: activeTemplate.accent_color }}
+                                                            >
+                                                                {activeTemplate.body_intro || "Fresh Lead"}
+                                                            </div>
+                                                            <div
+                                                                className="text-xs font-medium text-zinc-400 prose prose-sm max-w-none text-center"
+                                                                dangerouslySetInnerHTML={{ __html: activeTemplate.body_text || "<p>A user has just subscribed to the newsletter:</p>" }}
+                                                            />
+                                                            <div className="text-lg font-black text-zinc-900 border-y border-zinc-50 py-4 my-2">
+                                                                new-subscriber@example.com
+                                                            </div>
+                                                            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                                                                {new Date().toLocaleString()}
+                                                            </div>
+
+                                                            <div className="pt-4">
+                                                                <div className="inline-block px-8 py-3 rounded-xl bg-zinc-950 text-white font-black text-[11px] shadow-xl active:scale-95 transition-all cursor-pointer">
+                                                                    View in Dashboard
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Admin Alert Footer */}
+                                                        <div className="p-8 bg-zinc-50 text-center border-t border-zinc-100 flex flex-col items-center">
+                                                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest leading-relaxed text-center">
+                                                                © {new Date().getFullYear()} StartupSaga Administrative System<br />
+                                                                <span className="opacity-50">Confidential Notification • Internal Use Only</span>
+                                                            </p>
+                                                        </div>
+                                                    </>
+                                                )}
 
                                             </div>
                                             <div className="mt-4 text-center">
-                                                <p className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">Live Template Preview</p>
+                                                <p className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">
+                                                    {previewMode === "weekly" ? "Live Newsletter Preview" : "Live Admin Alert Preview"}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -572,6 +809,31 @@ export default function NewsletterPage() {
                 </Tabs>
 
             </div>
+
+            <AlertDialog open={!!subscriberToDelete} onOpenChange={(open) => !open && setSubscriberToDelete(null)}>
+                <AlertDialogContent className="rounded-2xl border-zinc-100 shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-bold text-zinc-900 font-serif">
+                            Confirm Deletion
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-500 text-sm">
+                            Are you sure you want to delete <span className="font-bold text-zinc-900">{subscriberToDelete?.email}</span>?
+                            This action is permanent and cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-xl border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-all font-bold text-xs uppercase tracking-widest">
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => subscriberToDelete && confirmDeleteSubscriber(subscriberToDelete.id, subscriberToDelete.email)}
+                            className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition-all font-bold text-xs uppercase tracking-widest px-6"
+                        >
+                            Delete Subscriber
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

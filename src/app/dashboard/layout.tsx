@@ -1,6 +1,7 @@
 import { getNavigation } from "@/lib/api";
 import { DashboardLayoutWrapper } from "@/components/dashboard/DashboardLayoutWrapper";
 
+export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
     let navItems: any[] = [];

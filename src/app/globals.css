@@ -41,8 +41,8 @@
     --destructive-foreground: 210 40% 98%;
 
     /* Border and inputs */
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
+    --border: 214 32% 78%;
+    --input: 214 32% 78%;
     --ring: 219 32% 15%;
 
     --radius: 1rem;
@@ -61,7 +61,7 @@
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 210 20% 96%;
     --sidebar-accent-foreground: 219 32% 15%;
-    --sidebar-border: 214 32% 91%;
+    --sidebar-border: 214 32% 78%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -173,8 +173,8 @@
     --muted-foreground: 215 16% 45%;
     --accent: 15 90% 96%;
     --accent-foreground: 15 90% 55%;
-    --border: 214 18% 90%;
-    --input: 214 18% 91%;
+    --border: 214 20% 75%;
+    --input: 214 20% 76%;
     --ring: 15 90% 55%;
 
     /* Premium Sidebar variables */
@@ -184,7 +184,7 @@
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 15 90% 97%;
     --sidebar-accent-foreground: 15 90% 55%;
-    --sidebar-border: 214 18% 92%;
+    --sidebar-border: 214 20% 75%;
     --sidebar-ring: 15 90% 55%;
 
     /* Glassmorphism tokens */
@@ -225,6 +225,97 @@
   .admin-page {
     @apply flex-1 space-y-8 p-6 md:p-10;
     background-color: hsl(var(--background));
+  }
+
+  /* ── Dashboard-wide consistent typography ── */
+  .admin-shell {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+  }
+
+  .admin-shell h1,
+  .admin-shell h2,
+  .admin-shell h3,
+  .admin-shell h4,
+  .admin-shell h5,
+  .admin-shell h6 {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  .admin-shell h1 {
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .admin-shell h2 {
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .admin-shell h3 {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .admin-shell h4 {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .admin-shell label,
+  .admin-shell .label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .admin-shell input,
+  .admin-shell select,
+  .admin-shell textarea {
+    font-size: 13px;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .admin-shell button {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+  }
+
+  .admin-shell p {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .admin-shell table {
+    font-size: 13px;
+  }
+
+  .admin-shell th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Sidebar font consistency */
+  .admin-shell [data-sidebar],
+  .admin-shell nav {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+  }
+
+  .admin-shell [data-sidebar] a,
+  .admin-shell [data-sidebar] button {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .admin-shell [data-sidebar] .text-xs {
+    font-size: 11px;
   }
 
   /* Premium Glass Class */

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, MapPin, Tag, Building2 } from "lucide-react";
 import { getSafeImageSrc } from "@/lib/images";
 
+
 interface StartupDetailContentProps {
     startup: any;
     relatedStories: any[];

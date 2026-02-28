@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+// import { Badge } from "@/components/ui/badge";
+// import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Save, Globe, Mail, Settings, Search, Sparkles, Loader2, MapPin,
     Phone, ShieldCheck, Shield, Sliders, Zap, Bot, FileText, Cpu,
-    Network, Trash2, LayoutGrid, CheckCircle2
+    Network, Trash2, LayoutGrid, CheckCircle2, Upload
 } from "lucide-react";
-import { getLayoutSettings, updateLayoutSettings, getSEOSettings, updateSEOSettings, generateSEO, generateContent, promptsApi, AIPrompt, systemApi } from "@/lib/api";
+import { getLayoutSettings, updateLayoutSettings, getSEOSettings, updateSEOSettings, generateContent, systemApi } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,45 +22,41 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [isGeneratingSEO, setIsGeneratingSEO] = useState(false);
-    const [isApplyingSEO, setIsApplyingSEO] = useState(false);
-    const [isApplyingPrompts, setIsApplyingPrompts] = useState(false);
     const [aiLoading, setAiLoading] = useState<string | null>(null);
 
     const [generalSettings, setGeneralSettings] = useState({
         site_name: "StartupSaga",
         site_tagline: "Chronicles of Indian Innovation",
         site_logo: "",
+        site_favicon: "",
         support_email: "hello@startupsaga.in",
         support_phone: "",
         support_address: ""
     });
 
+    const faviconInputRef = useRef<HTMLInputElement>(null);
+
     const [seoSettings, setSeoSettings] = useState<Record<string, any>>({
-        default_meta_title: "",
-        default_meta_description: "",
-        global_keywords: "",
+        google_analytics_id: "",
+        google_site_verification: "",
         robots_txt: "",
     });
 
-    const [prompts, setPrompts] = useState<AIPrompt[]>([]);
     const [activeTab, setActiveTab] = useState("site");
 
     useEffect(() => {
         fetchSettings();
         if (typeof window !== 'undefined') {
             if (window.location.hash === '#seo') setActiveTab("seo");
-            if (window.location.hash === '#prompts') setActiveTab("prompts");
         }
     }, []);
 
     const fetchSettings = async () => {
         setIsLoading(true);
         try {
-            const [layoutData, seoData, promptsData] = await Promise.all([
+            const [layoutData, seoData] = await Promise.all([
                 getLayoutSettings(),
-                getSEOSettings(),
-                promptsApi.list().catch(() => [])
+                getSEOSettings()
             ]);
 
             if (layoutData) {
@@ -79,13 +75,13 @@ export default function SettingsPage() {
                 setSeoSettings(prev => ({
                     ...prev,
                     ...seoData,
+                    google_analytics_id: seoData.google_analytics_id || prev.google_analytics_id,
+                    google_site_verification: seoData.google_site_verification || prev.google_site_verification,
                     robots_txt: seoData.robots_txt || prev.robots_txt,
                 }));
             }
 
-            if (promptsData) {
-                setPrompts(promptsData);
-            }
+
         } catch (error) {
             console.error("Failed to load settings", error);
         } finally {
@@ -135,122 +131,29 @@ export default function SettingsPage() {
         }
     };
 
-    const handleGenerateSEO = async () => {
-        setIsGeneratingSEO(true);
-        try {
-            const result = await generateSEO({
-                title: generalSettings.site_name,
-                description: generalSettings.site_tagline,
-                content: `Site Name: ${generalSettings.site_name}. Tagline: ${generalSettings.site_tagline}. Platform for Indian startups.`,
-                type: 'homepage'
-            });
-
-            if (result && !result.error) {
-                setSeoSettings(prev => ({
-                    ...prev,
-                    default_meta_title: result.meta_title || prev.default_meta_title,
-                    default_meta_description: result.meta_description || prev.default_meta_description,
-                    global_keywords: result.keywords || prev.global_keywords
-                }));
-                toast.success("AI Search Engine Optimization generated");
-            }
-        } finally {
-            setIsGeneratingSEO(false);
-        }
-    };
-
-    const handleApplyAllSEO = async () => {
-        if (!confirm("This will regenerate SEO metadata for all existing stories, startups, and hubs based on global rules. Continue?")) return;
-        setIsApplyingSEO(true);
-        const tid = toast.loading("Applying SEO architecture to all nodes...");
-        try {
-            await systemApi.applyAllSEO();
-            toast.success("Global SEO sync complete", { id: tid });
-        } catch (error) {
-            toast.error("Global sync failed", { id: tid });
-        } finally {
-            setIsApplyingSEO(false);
-        }
-    };
-
-    const handleApplyAllPrompts = async () => {
-        if (!confirm("This will update all existing pages using these AI rules. Continue?")) return;
-        setIsApplyingPrompts(true);
-        const tid = toast.loading("Updating website content with new AI rules...");
-        try {
-            await promptsApi.applyAll();
-            toast.success("All pages updated with new AI rules", { id: tid });
-        } catch (error) {
-            toast.error("Failed to update pages", { id: tid });
-        } finally {
-            setIsApplyingPrompts(false);
-        }
-    };
-
-    const handleUpdatePrompt = async (id: number, text: string) => {
-        try {
-            await promptsApi.update(id, { prompt_text: text });
-            toast.success("Prompt Template Updated");
-            // Optimistically update local state
-            setPrompts(prompts.map(p => p.id === id ? { ...p, prompt_text: text } : p));
-        } catch (e) {
-            toast.error("Failed to update prompt");
-        }
-    };
-
-    const handleCreatePrompt = async () => {
-        try {
-            const newPrompt = {
-                name: "New Prompt",
-                slug: `prompt-${Date.now()}`,
-                prompt_text: "",
-                category: "general",
-                is_active: true
-            };
-            const created = await promptsApi.create(newPrompt);
-            if (created) {
-                setPrompts([...prompts, created]);
-                toast.success("New prompt template created");
-            }
-        } catch (e) {
-            toast.error("Failed to create prompt");
-        }
-    };
-
-    const handleDeletePrompt = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this prompt template?")) return;
-        try {
-            await promptsApi.delete(id);
-            setPrompts(prompts.filter(p => p.id !== id));
-            toast.success("Prompt deleted");
-        } catch (e) {
-            toast.error("Failed to delete prompt");
-        }
-    };
-
     const AiInput = ({ value, onChange, label, field, type, textarea = false }: any) => (
-        <div className="space-y-1 w-full group/ai">
+        <div className="space-y-2 w-full group/ai">
             <div className="flex items-center justify-between">
-                <Label className="text-[9px] font-bold uppercase opacity-50 tracking-widest text-[#64748b]">{label}</Label>
+                <Label className="text-[12px] font-bold uppercase tracking-widest text-zinc-600">{label}</Label>
                 <button
                     onClick={() => handleAiRewrite(value, field, type)}
                     disabled={!!aiLoading || !value}
-                    className="opacity-0 group-hover/ai:opacity-100 transition-all duration-300 text-[8px] font-black uppercase text-indigo-500 hover:text-indigo-600 flex items-center gap-1 bg-indigo-50/50 px-1.5 py-0.5 rounded-md"
+                    className="opacity-0 group-hover/ai:opacity-100 transition-all duration-300 text-[10px] font-black uppercase text-indigo-500 hover:text-indigo-600 flex items-center gap-1 bg-indigo-50/50 px-2 py-1 rounded-md"
                 >
-                    <Sparkles size={10} className="animate-pulse" /> AI Optimize
+                    <Sparkles size={12} className="animate-pulse" /> AI Optimize
                 </button>
             </div>
             {textarea ? (
                 <Textarea
                     value={value || ""}
                     onChange={e => onChange(e.target.value)}
-                    className="min-h-[50px] rounded-xl text-[11px] bg-white border-zinc-200/60 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500/30 transition-all resize-none font-medium text-zinc-800 placeholder:text-zinc-300 shadow-sm"
+                    className="min-h-[50px] rounded-xl text-[13px] bg-white border-zinc-200/60 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500/30 transition-all resize-none font-medium text-zinc-800 placeholder:text-zinc-400 shadow-sm"
                 />
             ) : (
                 <Input
                     value={value || ""}
                     onChange={e => onChange(e.target.value)}
-                    className="rounded-xl h-9 text-[11px] bg-white border-zinc-200/60 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500/30 transition-all font-medium text-zinc-800 placeholder:text-zinc-300 shadow-sm"
+                    className="rounded-xl h-10 text-[13px] bg-white border-zinc-200/60 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500/30 transition-all font-medium text-zinc-800 placeholder:text-zinc-400 shadow-sm"
                 />
             )}
         </div>
@@ -258,487 +161,361 @@ export default function SettingsPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4 relative">
-                    <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-full" />
-                    <Loader2 className="h-10 w-10 animate-spin text-indigo-500 relative z-10" />
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 animate-pulse relative z-10">Initializing Architecture</p>
+            <div className="min-h-screen bg-white flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-10 w-10 rounded-full border-4 border-zinc-50 border-t-indigo-500 animate-spin" />
+                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Loading settings...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] text-zinc-900 font-sans pb-20">
-            <div className="max-w-4xl mx-auto p-4 sm:p-8 space-y-6">
+        <div className="min-h-screen bg-white text-zinc-900 font-sans pb-8 px-6 pt-6">
+            <div className="max-w-[1100px] mx-auto space-y-6">
 
-                {/* --- HEADER --- */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/50 pb-6">
-                    <div className="space-y-0.5">
-                        <div className="flex items-center gap-2 text-indigo-500 mb-1">
-                            <div className="p-1.5 bg-indigo-50 rounded-lg shadow-sm border border-indigo-100/50">
-                                <Settings size={16} />
-                            </div>
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em]">Site Management</span>
+                {/* ── HEADER ── */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 px-5 rounded-xl bg-zinc-50 border border-zinc-100 shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100/50">
+                            <Settings className="h-5 w-5 text-white" />
                         </div>
-                        <h1 className="text-xl font-black text-zinc-900 tracking-tight uppercase">
-                            Website Settings
-                        </h1>
-                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                            Identity & Search Optimization <span className="h-1 w-1 rounded-full bg-zinc-200" /> AI Rules
-                        </p>
+                        <div>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-none mb-1.5">Configuration</p>
+                            <h1 className="text-lg font-bold tracking-tight text-zinc-900 leading-none">Website Settings</h1>
+                        </div>
                     </div>
-                    <Button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="bg-zinc-900 hover:bg-black text-white rounded-xl px-5 font-black text-[9px] uppercase tracking-widest shadow-lg shadow-zinc-900/10 h-9 transition-all active:scale-95 flex items-center gap-2 flex-none"
-                    >
-                        {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-                        Save Settings
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 p-1 bg-white border border-zinc-200 rounded-lg">
+                            {[
+                                { id: "site", label: "Identity", icon: Globe },
+                                { id: "seo", label: "SEO", icon: Search },
+
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all",
+                                        activeTab === tab.id
+                                            ? "bg-zinc-900 text-white shadow-sm"
+                                            : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50"
+                                    )}
+                                >
+                                    <tab.icon size={11} />
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                        <Button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="h-9 px-4 rounded-lg bg-zinc-900 hover:bg-black text-white font-bold text-[11px] gap-2 transition-all active:scale-95 flex-none"
+                        >
+                            {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                            Save
+                        </Button>
+                    </div>
                 </div>
 
-                <div className="flex flex-col gap-8">
-                    {/* Navigation Tabs */}
-                    <div className="flex items-center gap-1.5 p-1 bg-zinc-100/80 backdrop-blur-sm rounded-xl border border-zinc-200/50 w-fit">
-                        {[
-                            { id: "site", label: "Identity", icon: Globe, color: "text-blue-500", bg: "bg-blue-50" },
-                            { id: "seo", label: "SEO", icon: Search, color: "text-indigo-500", bg: "bg-indigo-50" },
-                            { id: "prompts", label: "AI Writing", icon: Sparkles, color: "text-pink-500", bg: "bg-pink-50" },
-                        ].map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={cn(
-                                    "flex items-center gap-2 px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
-                                    activeTab === tab.id
-                                        ? "bg-white text-zinc-900 shadow-md shadow-zinc-200 ring-1 ring-zinc-200/50"
-                                        : "text-zinc-500 hover:text-zinc-800"
-                                )}
+                {/* ── CONTENT ── */}
+                <div className="w-full">
+                    <AnimatePresence mode="wait">
+                        {activeTab === 'site' && (
+                            <motion.div
+                                key="site"
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.98 }}
+                                transition={{ duration: 0.2 }}
+                                className="space-y-4"
                             >
-                                <tab.icon size={12} className={cn(activeTab === tab.id ? tab.color : "opacity-40")} />
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Brand Assets */}
+                                    <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative overflow-hidden group/card hover:border-blue-200/50 transition-colors">
+                                        <div className="absolute -top-10 -right-10 p-6 opacity-[0.02] group-hover/card:scale-110 transition-transform duration-700">
+                                            <Globe size={200} />
+                                        </div>
 
-                    {/* Content Area */}
-                    <div className="w-full">
-                        <AnimatePresence mode="wait">
-                            {activeTab === 'site' && (
-                                <motion.div
-                                    key="site"
-                                    initial={{ opacity: 0, scale: 0.98 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.98 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="space-y-4"
-                                >
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* Brand Assets */}
-                                        <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative overflow-hidden group/card hover:border-blue-200/50 transition-colors">
-                                            <div className="absolute -top-10 -right-10 p-6 opacity-[0.02] group-hover/card:scale-110 transition-transform duration-700">
-                                                <Globe size={200} />
+                                        <div className="flex items-center gap-3 border-b border-zinc-50 pb-3 relative z-10">
+                                            <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 shadow-sm border border-blue-100/50">
+                                                <Globe size={14} />
                                             </div>
-
-                                            <div className="flex items-center gap-3 border-b border-zinc-50 pb-3 relative z-10">
-                                                <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 shadow-sm border border-blue-100/50">
-                                                    <Globe size={14} />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-[9px] font-black text-zinc-900 uppercase tracking-widest">Brand Info</h3>
-                                                    <p className="text-[8px] font-medium text-zinc-400">Basic website identification</p>
-                                                </div>
+                                            <div>
+                                                <h3 className="text-[12px] font-black text-zinc-900 uppercase tracking-widest">Brand Info</h3>
+                                                <p className="text-[11px] font-medium text-zinc-400">Basic website identification</p>
                                             </div>
+                                        </div>
 
-                                            <div className="space-y-4 relative z-10">
-                                                <div className="space-y-1">
-                                                    <Label className="text-[9px] font-bold uppercase opacity-50 tracking-widest text-[#64748b]">Logo URL</Label>
-                                                    <div className="flex gap-2">
-                                                        <div className="relative flex-1">
-                                                            <Input
-                                                                value={generalSettings.site_logo || ""}
-                                                                onChange={e => setGeneralSettings({ ...generalSettings, site_logo: e.target.value })}
-                                                                className="rounded-xl h-9 text-[11px] bg-white border-zinc-200/60 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500/30 transition-all font-medium text-zinc-800 placeholder:text-zinc-300 shadow-sm"
-                                                                placeholder="https://..."
-                                                            />
+                                        <div className="space-y-4 relative z-10">
+                                            <div className="space-y-1">
+                                                <Label className="text-[12px] font-bold uppercase tracking-widest text-zinc-600">Logo URL</Label>
+                                                <div className="flex gap-2">
+                                                    <div className="relative flex-1">
+                                                        <Input
+                                                            value={generalSettings.site_logo || ""}
+                                                            onChange={e => setGeneralSettings({ ...generalSettings, site_logo: e.target.value })}
+                                                            className="rounded-xl h-10 text-[13px] bg-white border-zinc-200/60 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500/30 transition-all font-medium text-zinc-800 placeholder:text-zinc-400 shadow-sm"
+                                                            placeholder="https://..."
+                                                        />
+                                                    </div>
+                                                    {generalSettings.site_logo && (
+                                                        <div className="h-9 w-9 rounded-lg border border-zinc-200/50 bg-white p-1 flex items-center justify-center shrink-0">
+                                                            <img src={generalSettings.site_logo} alt="Logo" className="max-w-full max-h-full object-contain" />
                                                         </div>
-                                                        {generalSettings.site_logo && (
-                                                            <div className="h-9 w-9 rounded-lg border border-zinc-200/50 bg-white p-1 flex items-center justify-center shrink-0">
-                                                                <img src={generalSettings.site_logo} alt="Logo" className="max-w-full max-h-full object-contain" />
-                                                            </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Favicon Upload */}
+                                            <div className="space-y-2">
+                                                <Label className="text-[12px] font-bold uppercase tracking-widest text-zinc-600">Favicon</Label>
+                                                <div className="flex gap-3 items-center">
+                                                    <div
+                                                        onClick={() => faviconInputRef.current?.click()}
+                                                        className={cn(
+                                                            "h-14 w-14 shrink-0 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-all overflow-hidden group/fav",
+                                                            generalSettings.site_favicon
+                                                                ? "border-blue-300 bg-blue-50/40"
+                                                                : "border-zinc-300 bg-zinc-50 hover:border-blue-400 hover:bg-blue-50/30"
+                                                        )}
+                                                    >
+                                                        {generalSettings.site_favicon ? (
+                                                            <img src={generalSettings.site_favicon} alt="Favicon" className="h-full w-full object-contain p-1" />
+                                                        ) : (
+                                                            <Upload className="h-5 w-5 text-zinc-400 group-hover/fav:text-blue-500 transition-colors" />
                                                         )}
                                                     </div>
-                                                </div>
-
-                                                <AiInput
-                                                    label="Site Name"
-                                                    value={generalSettings.site_name}
-                                                    onChange={(v: string) => setGeneralSettings({ ...generalSettings, site_name: v })}
-                                                    field="site_name"
-                                                    type="general"
-                                                />
-                                                <AiInput
-                                                    label="Platform Tagline"
-                                                    value={generalSettings.site_tagline}
-                                                    onChange={(v: string) => setGeneralSettings({ ...generalSettings, site_tagline: v })}
-                                                    field="site_tagline"
-                                                    type="general"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Contact Info */}
-                                        <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative overflow-hidden group/card hover:border-emerald-200/50 transition-colors">
-                                            <div className="absolute -top-10 -right-10 p-6 opacity-[0.02] group-hover/card:scale-110 transition-transform duration-700">
-                                                <Mail size={200} />
-                                            </div>
-
-                                            <div className="flex items-center gap-3 border-b border-zinc-50 pb-3 relative z-10">
-                                                <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100/50">
-                                                    <Zap size={14} />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-[9px] font-black text-zinc-900 uppercase tracking-widest">Contact Info</h3>
-                                                    <p className="text-[8px] font-medium text-zinc-400">How users can reach you</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-4 relative z-10">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <AiInput
-                                                        label="Support Email"
-                                                        value={generalSettings.support_email}
-                                                        onChange={(v: string) => setGeneralSettings({ ...generalSettings, support_email: v })}
-                                                        field="support_email"
-                                                        type="general"
-                                                    />
-                                                    <AiInput
-                                                        label="Phone Number"
-                                                        value={generalSettings.support_phone}
-                                                        onChange={(v: string) => setGeneralSettings({ ...generalSettings, support_phone: v })}
-                                                        field="support_phone"
-                                                        type="general"
-                                                    />
-                                                </div>
-                                                <AiInput
-                                                    label="Office Address"
-                                                    value={generalSettings.support_address}
-                                                    onChange={(v: string) => setGeneralSettings({ ...generalSettings, support_address: v })}
-                                                    field="support_address"
-                                                    type="general"
-                                                    textarea
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {activeTab === 'seo' && (
-                                <motion.div
-                                    key="seo"
-                                    initial={{ opacity: 0, scale: 0.98 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.98 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="space-y-4"
-                                >
-                                    <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative overflow-hidden group/card">
-                                        <div className="absolute -top-10 -right-10 p-6 opacity-[0.02] group-hover/card:scale-110 transition-transform duration-700">
-                                            <Search size={250} />
-                                        </div>
-
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-50 pb-3 relative z-10">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100/50">
-                                                    <Search size={14} />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-[9px] font-black text-zinc-900 uppercase tracking-widest">SEO Settings</h3>
-                                                    <p className="text-[8px] font-medium text-zinc-400">Improve search engine ranking</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5">
-                                                <Button
-                                                    variant="ghost"
-                                                    onClick={handleGenerateSEO}
-                                                    disabled={isGeneratingSEO}
-                                                    className="h-7 px-3 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-all font-black text-[8px] uppercase tracking-widest gap-1.5"
-                                                >
-                                                    {isGeneratingSEO ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                                                    AI Auto-Generate
-                                                </Button>
-                                                <Button
-                                                    variant="secondary"
-                                                    onClick={handleApplyAllSEO}
-                                                    disabled={isApplyingSEO}
-                                                    className="h-7 px-3 rounded-lg bg-zinc-900 text-white hover:bg-black transition-all font-black text-[8px] uppercase tracking-widest gap-1.5 shadow-sm"
-                                                >
-                                                    {isApplyingSEO ? <Loader2 size={10} className="animate-spin" /> : <LayoutGrid size={10} />}
-                                                    Apply SEO to All Pages
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
-                                            <div className="lg:col-span-8 space-y-4">
-                                                <AiInput
-                                                    label="Global Meta Title"
-                                                    value={seoSettings.default_meta_title}
-                                                    onChange={(v: string) => setSeoSettings({ ...seoSettings, default_meta_title: v })}
-                                                    field="default_meta_title"
-                                                    type="seo"
-                                                />
-                                                <AiInput
-                                                    label="Global Meta Keywords"
-                                                    value={seoSettings.global_keywords}
-                                                    onChange={(v: string) => setSeoSettings({ ...seoSettings, global_keywords: v })}
-                                                    field="global_keywords"
-                                                    type="seo"
-                                                />
-                                                <AiInput
-                                                    label="Global Meta Description"
-                                                    value={seoSettings.default_meta_description}
-                                                    onChange={(v: string) => setSeoSettings({ ...seoSettings, default_meta_description: v })}
-                                                    field="default_meta_description"
-                                                    type="seo"
-                                                    textarea
-                                                />
-                                            </div>
-
-                                            <div className="lg:col-span-4 flex flex-col gap-3">
-                                                <div className="flex-1 p-4 rounded-xl bg-zinc-900 text-zinc-400 flex flex-col justify-center gap-3 relative overflow-hidden group">
-                                                    <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 z-0" />
-                                                    <div className="relative z-10 space-y-3">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <div className="p-1 rounded bg-emerald-500/10">
-                                                                <ShieldCheck size={12} className="text-emerald-400" />
-                                                            </div>
-                                                            <h4 className="text-[8px] font-black uppercase tracking-[0.2em] text-white">SEO Quality</h4>
-                                                        </div>
-                                                        <div className="space-y-1.5">
-                                                            <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-tight">
-                                                                <span className="opacity-50">Title Length</span>
-                                                                <span className={cn(seoSettings.default_meta_title?.length < 60 ? "text-emerald-400" : "text-amber-400")}>{seoSettings.default_meta_title?.length}/60</span>
-                                                            </div>
-                                                            <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
-                                                                <motion.div
-                                                                    className="h-full bg-emerald-400"
-                                                                    initial={{ width: 0 }}
-                                                                    animate={{ width: `${Math.min((seoSettings.default_meta_title?.length || 0) / 60 * 100, 100)}%` }}
-                                                                />
-                                                            </div>
-                                                            <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-tight">
-                                                                <span className="opacity-50">Description Length</span>
-                                                                <span className={cn(seoSettings.default_meta_description?.length < 160 ? "text-emerald-400" : "text-amber-400")}>{seoSettings.default_meta_description?.length}/160</span>
-                                                            </div>
-                                                            <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
-                                                                <motion.div
-                                                                    className="h-full bg-indigo-400"
-                                                                    initial={{ width: 0 }}
-                                                                    animate={{ width: `${Math.min((seoSettings.default_meta_description?.length || 0) / 160 * 100, 100)}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-[7px] uppercase leading-relaxed font-bold opacity-30 mt-2">
-                                                            * Global rules apply during system-wide sync.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Robots.txt and Sitemap */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                        <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative overflow-hidden group/card hover:border-orange-200/50 transition-colors">
-                                            <div className="flex items-center gap-3 border-b border-zinc-50 pb-3 relative z-10">
-                                                <div className="h-7 w-7 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-sm border border-orange-100/50">
-                                                    <Bot size={14} />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-[9px] font-black text-zinc-900 uppercase tracking-widest">Search Engine Instructions</h3>
-                                                    <p className="text-[8px] font-medium text-zinc-400">Control search engine behavior (Robots.txt)</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-3 relative z-10">
-                                                <div className="flex items-center justify-between">
-                                                    <Label className="text-[9px] font-bold uppercase opacity-50 tracking-widest">Robots.txt Content</Label>
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => setSeoSettings({ ...seoSettings, robots_txt: "User-agent: *\nAllow: /" })}
-                                                            className="text-[8px] font-bold uppercase text-zinc-400 hover:text-zinc-600 transition-colors bg-zinc-50 px-1.5 py-0.5 rounded"
-                                                        >
-                                                            Allow All
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setSeoSettings({ ...seoSettings, robots_txt: seoSettings.robots_txt + "\n\nUser-agent: GPTBot\nDisallow: /" })}
-                                                            className="text-[8px] font-bold uppercase text-zinc-400 hover:text-red-500 transition-colors bg-zinc-50 px-1.5 py-0.5 rounded"
-                                                        >
-                                                            Block AI
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <Textarea
-                                                    value={seoSettings.robots_txt}
-                                                    onChange={(e) => setSeoSettings({ ...seoSettings, robots_txt: e.target.value })}
-                                                    className="min-h-[100px] font-mono text-[10px] bg-zinc-50/50 border-zinc-200/80 resize-none text-zinc-600 focus:bg-white transition-all leading-relaxed rounded-xl"
-                                                    placeholder="User-agent: *&#10;Allow: /"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative overflow-hidden group/card hover:border-blue-200/50 transition-colors">
-                                            <div className="flex items-center gap-3 border-b border-zinc-50 pb-3 relative z-10">
-                                                <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 shadow-sm border border-blue-100/50">
-                                                    <Network size={14} />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-[9px] font-black text-zinc-900 uppercase tracking-widest">Website Map</h3>
-                                                    <p className="text-[8px] font-medium text-zinc-400">Sitemap settings</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-4 relative z-10">
-                                                <div>
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <Label className="text-[9px] font-bold uppercase opacity-50 tracking-widest">Sitemap XML</Label>
-                                                        <a
-                                                            href="https://search.google.com/search-console"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-[8px] font-bold uppercase text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-1 bg-blue-50/50 px-2 py-0.5 rounded-md shadow-sm"
-                                                        >
-                                                            Console <Sparkles size={8} />
-                                                        </a>
-                                                    </div>
-                                                    <div className="bg-[#fcfdfe] rounded-xl p-3 border border-blue-100/30 flex items-center justify-between group cursor-pointer hover:bg-white hover:border-blue-200/50 transition-all shadow-sm" onClick={() => window.open('/sitemap.xml', '_blank')}>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="p-1.5 bg-white rounded-lg shadow-sm">
-                                                                <FileText size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
-                                                            </div>
-                                                            <code className="text-[10px] font-bold text-zinc-600 tracking-tight">/sitemap.xml</code>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 rounded-full border border-emerald-100">
-                                                            <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                                                            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Active</span>
-                                                        </div>
-                                                    </div>
-                                                    <p className="mt-3 text-[9px] text-zinc-400 font-medium leading-relaxed max-w-xs">
-                                                        Dynamic sitemap indexing is enabled. All updates are automatically added to your sitemap in real-time.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {activeTab === 'prompts' && (
-                                <motion.div
-                                    key="prompts"
-                                    initial={{ opacity: 0, scale: 0.98 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.98 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="space-y-4"
-                                >
-                                    <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative overflow-hidden group/card">
-                                        <div className="absolute -top-10 -right-10 p-6 opacity-[0.02] group-hover/card:scale-110 transition-transform duration-700">
-                                            <Bot size={250} />
-                                        </div>
-
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-50 pb-3 relative z-10">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-7 w-7 rounded-lg bg-pink-50 flex items-center justify-center text-pink-500 shadow-sm border border-pink-100/50">
-                                                    <Cpu size={14} />
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-[9px] font-black text-zinc-900 uppercase tracking-widest">AI Writing Rules</h3>
-                                                    <p className="text-[8px] font-medium text-zinc-400">How AI writes your website content</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1.5">
-                                                <Button
-                                                    variant="secondary"
-                                                    onClick={handleApplyAllPrompts}
-                                                    disabled={isApplyingPrompts}
-                                                    className="h-7 px-3 rounded-lg bg-zinc-900 text-white hover:bg-black transition-all font-black text-[8px] uppercase tracking-widest gap-1.5 shadow-sm"
-                                                >
-                                                    {isApplyingPrompts ? <Loader2 size={10} className="animate-spin" /> : <LayoutGrid size={10} />}
-                                                    Apply Rules to All Pages
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    onClick={handleCreatePrompt}
-                                                    className="h-7 px-3 rounded-lg text-pink-600 hover:bg-pink-50 transition-all font-black text-[8px] uppercase tracking-widest gap-1.5"
-                                                >
-                                                    <Sparkles size={10} className="animate-pulse" />
-                                                    Add New Rule
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
-                                            {prompts.map((prompt) => (
-                                                <div key={prompt.id} className="space-y-2 group/item p-3 rounded-xl border border-zinc-100 hover:border-pink-200/50 hover:bg-pink-50/10 transition-all bg-[#fafafa]">
-                                                    <div className="flex items-center justify-between">
-                                                        <Label className="text-[9px] font-black uppercase opacity-60 tracking-widest flex items-center gap-2 text-zinc-600">
-                                                            <Sparkles size={10} className="text-pink-400" />
-                                                            {prompt.name}
-                                                        </Label>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="text-[7px] font-black uppercase tracking-widest text-[#a1a1aa] transition-colors">{prompt.category}</div>
-                                                            <button
-                                                                onClick={() => handleDeletePrompt(prompt.id)}
-                                                                className="opacity-0 group-item-hover:opacity-100 text-zinc-300 hover:text-red-500 transition-all p-1 hover:bg-red-50 rounded"
-                                                            >
-                                                                <Trash2 size={10} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <Textarea
-                                                        value={prompt.prompt_text}
+                                                    <input
+                                                        ref={faviconInputRef}
+                                                        type="file"
+                                                        accept="image/x-icon,image/png,image/svg+xml,image/ico,.ico"
+                                                        className="hidden"
                                                         onChange={(e) => {
-                                                            const newText = e.target.value;
-                                                            setPrompts(prompts.map(p => p.id === prompt.id ? { ...p, prompt_text: newText } : p));
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onloadend = () => setGeneralSettings(prev => ({ ...prev, site_favicon: reader.result as string }));
+                                                                reader.readAsDataURL(file);
+                                                            }
                                                         }}
-                                                        onBlur={() => handleUpdatePrompt(prompt.id, prompt.prompt_text)}
-                                                        className="min-h-[80px] font-medium text-[10px] bg-white border-zinc-200/60 resize-none text-zinc-700 focus:ring-1 focus:ring-pink-500/20 rounded-lg shadow-sm leading-relaxed"
-                                                        placeholder="Enter AI writing instruction..."
                                                     />
-                                                    <div className="flex items-center justify-between pt-1.5 opacity-60 group-item-hover:opacity-100 transition-opacity">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="text-[7px] font-black uppercase tracking-tight text-zinc-400">Tokens:</span>
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="text-[7px] font-black px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 border border-blue-200/50 uppercase tracking-tighter shadow-sm">{`{title}`}</span>
-                                                                <span className="text-[7px] font-black px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 border border-emerald-200/50 uppercase tracking-tighter shadow-sm">{`{description}`}</span>
-                                                                <span className="text-[7px] font-black px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-700 border border-purple-200/50 uppercase tracking-tighter shadow-sm">{`{content}`}</span>
-                                                                <span className="text-[7px] font-black px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 border border-amber-200/50 uppercase tracking-tighter shadow-sm">{`{slug}`}</span>
-                                                            </div>
-                                                        </div>
-                                                        <span className="text-zinc-400 group-item-hover:text-emerald-500 transition-colors flex items-center gap-1 cursor-default text-[7px] font-black uppercase tracking-widest leading-none">
-                                                            <CheckCircle2 size={8} /> Sync Ready
-                                                        </span>
+                                                    <div className="flex-1 space-y-1">
+                                                        <Input
+                                                            value={generalSettings.site_favicon || ""}
+                                                            onChange={e => setGeneralSettings({ ...generalSettings, site_favicon: e.target.value })}
+                                                            className="rounded-xl h-10 text-[13px] bg-white border-zinc-200/60 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500/30 transition-all font-medium text-zinc-800 placeholder:text-zinc-400 shadow-sm"
+                                                            placeholder="https://... or click icon to upload"
+                                                        />
+                                                        <p className="text-[10px] text-zinc-400 font-medium">Supports .ico, .png, .svg — recommended 32×32px</p>
                                                     </div>
+                                                    {generalSettings.site_favicon && (
+                                                        <button
+                                                            onClick={() => setGeneralSettings(prev => ({ ...prev, site_favicon: "" }))}
+                                                            className="h-10 w-10 shrink-0 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-red-500 hover:border-red-200 transition-all"
+                                                            title="Remove favicon"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
                                                 </div>
-                                            ))}
-                                            {prompts.length === 0 && (
-                                                <div className="col-span-2 py-8 text-center border border-dashed border-zinc-200 rounded-2xl flex flex-col items-center justify-center gap-2 bg-zinc-50/50">
-                                                    <Bot size={20} className="text-zinc-200 mb-1" />
-                                                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">No AI Rules Found</p>
-                                                    <p className="text-[9px] text-zinc-300">Add your first AI writing rule to begin</p>
-                                                </div>
-                                            )}
+                                            </div>
+
+                                            <AiInput
+                                                label="Site Name"
+                                                value={generalSettings.site_name}
+                                                onChange={(v: string) => setGeneralSettings({ ...generalSettings, site_name: v })}
+                                                field="site_name"
+                                                type="general"
+                                            />
+                                            <AiInput
+                                                label="Platform Tagline"
+                                                value={generalSettings.site_tagline}
+                                                onChange={(v: string) => setGeneralSettings({ ...generalSettings, site_tagline: v })}
+                                                field="site_tagline"
+                                                type="general"
+                                            />
                                         </div>
                                     </div>
-                                </motion.div>
-                            )}
 
-                        </AnimatePresence>
-                    </div>
+                                    {/* Contact Info */}
+                                    <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative group/card hover:border-emerald-200/50 transition-colors">
+                                        <div className="flex items-center gap-3 border-b border-zinc-50 pb-3 relative z-10">
+                                            <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100/50">
+                                                <Zap size={14} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-[12px] font-black text-zinc-900 uppercase tracking-widest">Contact Info</h3>
+                                                <p className="text-[11px] font-medium text-zinc-400">How users can reach you</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4 relative z-10">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <AiInput
+                                                    label="Support Email"
+                                                    value={generalSettings.support_email}
+                                                    onChange={(v: string) => setGeneralSettings({ ...generalSettings, support_email: v })}
+                                                    field="support_email"
+                                                    type="general"
+                                                />
+                                                <AiInput
+                                                    label="Phone Number"
+                                                    value={generalSettings.support_phone}
+                                                    onChange={(v: string) => setGeneralSettings({ ...generalSettings, support_phone: v })}
+                                                    field="support_phone"
+                                                    type="general"
+                                                />
+                                            </div>
+                                            <AiInput
+                                                label="Office Address"
+                                                value={generalSettings.support_address}
+                                                onChange={(v: string) => setGeneralSettings({ ...generalSettings, support_address: v })}
+                                                field="support_address"
+                                                type="general"
+                                                textarea
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {activeTab === 'seo' && (
+                            <motion.div
+                                key="seo"
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.98 }}
+                                transition={{ duration: 0.2 }}
+                                className="space-y-4"
+                            >
+                                <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative group/card">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-50 pb-3 relative z-10">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100/50">
+                                                <Search size={14} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-[12px] font-black text-zinc-900 uppercase tracking-widest">Analytics Settings</h3>
+                                                <p className="text-[11px] font-medium text-zinc-400">Track and monitor your website reach</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10">
+                                        <div className="space-y-4">
+                                            <div className="space-y-1 w-full">
+                                                <Label className="text-[12px] font-bold uppercase tracking-widest text-zinc-600">Google Analytics ID (G-XXXXXX)</Label>
+                                                <Input
+                                                    value={seoSettings.google_analytics_id || ""}
+                                                    onChange={(e) => setSeoSettings({ ...seoSettings, google_analytics_id: e.target.value })}
+                                                    placeholder="G-EX4MPL31D"
+                                                    className="rounded-xl h-10 text-[13px] bg-white border-zinc-200/60 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500/30 transition-all font-medium text-zinc-800 placeholder:text-zinc-400 shadow-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="space-y-1 w-full">
+                                                <Label className="text-[12px] font-bold uppercase tracking-widest text-zinc-600">Google Site Verification</Label>
+                                                <Input
+                                                    value={seoSettings.google_site_verification || ""}
+                                                    onChange={(e) => setSeoSettings({ ...seoSettings, google_site_verification: e.target.value })}
+                                                    placeholder="verification-code-hash"
+                                                    className="rounded-xl h-10 text-[13px] bg-white border-zinc-200/60 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500/30 transition-all font-medium text-zinc-800 placeholder:text-zinc-400 shadow-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Robots.txt and Sitemap */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative group/card hover:border-orange-200/50 transition-colors">
+                                        <div className="flex items-center gap-3 border-b border-zinc-50 pb-3 relative z-10">
+                                            <div className="h-7 w-7 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500 shadow-sm border border-orange-100/50">
+                                                <Bot size={14} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-[12px] font-black text-zinc-900 uppercase tracking-widest">Search Engine Instructions</h3>
+                                                <p className="text-[11px] font-medium text-zinc-400">Control search engine behavior (Robots.txt)</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3 relative z-10">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[12px] font-bold uppercase tracking-widest text-zinc-600">Robots.txt Content</Label>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => setSeoSettings({ ...seoSettings, robots_txt: "User-agent: *\nAllow: /" })}
+                                                        className="text-[8px] font-bold uppercase text-zinc-400 hover:text-zinc-600 transition-colors bg-zinc-50 px-1.5 py-0.5 rounded"
+                                                    >
+                                                        Allow All
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setSeoSettings({ ...seoSettings, robots_txt: seoSettings.robots_txt + "\n\nUser-agent: GPTBot\nDisallow: /" })}
+                                                        className="text-[8px] font-bold uppercase text-zinc-400 hover:text-red-500 transition-colors bg-zinc-50 px-1.5 py-0.5 rounded"
+                                                    >
+                                                        Block AI
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <Textarea
+                                                value={seoSettings.robots_txt}
+                                                onChange={(e) => setSeoSettings({ ...seoSettings, robots_txt: e.target.value })}
+                                                className="min-h-[100px] font-mono text-[10px] bg-zinc-50/50 border-zinc-200/80 resize-none text-zinc-600 focus:bg-white transition-all leading-relaxed rounded-xl"
+                                                placeholder="User-agent: *&#10;Allow: /"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="p-5 rounded-2xl bg-white border border-zinc-200/50 shadow-sm space-y-4 relative group/card hover:border-blue-200/50 transition-colors">
+                                        <div className="flex items-center gap-3 border-b border-zinc-50 pb-3 relative z-10">
+                                            <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 shadow-sm border border-blue-100/50">
+                                                <Network size={14} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-[12px] font-black text-zinc-900 uppercase tracking-widest">Website Map</h3>
+                                                <p className="text-[11px] font-medium text-zinc-400">Sitemap settings</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4 relative z-10">
+                                            <div>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <Label className="text-[12px] font-bold uppercase tracking-widest text-zinc-600">Sitemap XML</Label>
+                                                    <a
+                                                        href="https://search.google.com/search-console"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase text-white bg-blue-600 hover:bg-blue-700 transition-all px-4 py-1.5 rounded-lg shadow-sm hover:shadow-md"
+                                                    >
+                                                        <Search size={12} /> Search Console
+                                                    </a>
+                                                </div>
+                                                <div className="bg-[#fcfdfe] rounded-xl p-3 border border-blue-100/30 flex items-center justify-between group cursor-pointer hover:bg-white hover:border-blue-200/50 transition-all shadow-sm" onClick={() => window.open('/sitemap.xml', '_blank')}>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-1.5 bg-white rounded-lg shadow-sm">
+                                                            <FileText size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                                                        </div>
+                                                        <code className="text-[10px] font-bold text-zinc-600 tracking-tight">/sitemap.xml</code>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 rounded-full border border-emerald-100">
+                                                        <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                                                        <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Active</span>
+                                                    </div>
+                                                </div>
+                                                <p className="mt-3 text-[9px] text-zinc-400 font-medium leading-relaxed max-w-xs">
+                                                    Dynamic sitemap indexing is enabled. All updates are automatically added to your sitemap in real-time.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                    </AnimatePresence>
                 </div>
             </div>
         </div>
