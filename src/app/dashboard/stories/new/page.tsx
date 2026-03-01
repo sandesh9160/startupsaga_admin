@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, useRef, useMemo } from "react";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
-import { fetchAPI, generateContent, generateSEO, getSubmissionDetail, createStory, getStories, updateStory, getStoryById, updateSubmissionStatus, getStartups, getCategories, getHubs, startupsApi } from "@/lib/api";
+import { fetchAPI, generateContent, generateSEO, getSubmissionDetail, createStory, getStories, updateStory, getStoryById, updateSubmissionStatus, updateSubmission, getStartups, getCategories, getHubs, startupsApi } from "@/lib/api";
 import { getPromptTemplate, fillTemplate } from "@/lib/prompt-manager";
 import { toast } from "sonner";
 import { getSafeImageSrc } from "@/lib/images";
@@ -111,6 +112,7 @@ function NewStoryPageContent() {
     const submissionId = searchParams.get('submission');
     const editSlug = searchParams.get('edit');
     const editIdParam = searchParams.get('editId');
+    const typeParam = searchParams.get('type') as "story" | "startup" | "submission";
     const sectionIdCounter = useRef(0);
     const [startups, setStartups] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
@@ -124,7 +126,7 @@ function NewStoryPageContent() {
     const [sections, setSections] = useState<Array<{ id: string; title: string; content: string }>>([]);
     const [mediaItems, setMediaItems] = useState<any[]>([]);
     const [editingStoryId, setEditingStoryId] = useState<number | null>(null);
-    const [publishType, setPublishType] = useState<"story" | "startup">("story");
+    const [publishType, setPublishType] = useState<"story" | "startup" | "submission">(typeParam || "story");
     const [formData, setFormData] = useState<StoryFormData>({
         title: "",
         slug: "",
@@ -168,10 +170,12 @@ function NewStoryPageContent() {
         meta_title: "",
         meta_description: "",
         meta_keywords: "",
+        image_alt: "",
     });
 
 
     const isStory = publishType === "story";
+    const isSubmission = publishType === "submission";
     const currentThumbnail = isStory ? formData.thumbnail : startupData.logo;
     const currentStatus = isStory ? formData.status : (startupData.status as StoryStatus);
     const currentSEO = isStory ? formData : startupData;
@@ -410,10 +414,32 @@ function NewStoryPageContent() {
                         meta_title: titleFromSubmission ? `How ${titleFromSubmission} is Revolutionizing ${sub.category || 'their Industry'}` : "",
                         thumbnail: sub.thumbnail || sub.logo || sub.logo_url || prev.thumbnail || "",
                         og_image: sub.thumbnail || sub.logo || sub.logo_url || prev.og_image || "",
+                        image_alt: sub.image_alt || prev.image_alt || "",
                     }));
+
+                    setStartupData(prev => ({
+                        ...prev,
+                        name: sub.startup_name || "",
+                        founder_name: sub.founder_name || "",
+                        website_url: sub.website || "",
+                        tagline: sub.description || "",
+                        description: sub.full_story || sub.description || "",
+                        category: sub.category || "",
+                        city: sub.city || "",
+                        stage: sub.funding_stage || "",
+                        business_model: sub.business_model || "",
+                        logo: sub.logo || "",
+                        og_image: sub.thumbnail || sub.logo || sub.og_image || "",
+                        meta_title: sub.meta_title || "",
+                        meta_description: sub.meta_description || "",
+                        meta_keywords: sub.meta_keywords || "",
+                        image_alt: sub.image_alt || "",
+                        status: sub.status || "pending"
+                    }));
+
                     // store submission details for UI (if needed later)
                     setSubmissionDetails(sub);
-                    toast.info("Submission data loaded as reference in the sidebar.");
+                    toast.info(typeParam === 'submission' ? "Editing Submission" : "Submission data loaded as reference.");
                 })
                 .catch((err: any) => console.error("Error preloading submission", err))
                 .finally(() => setIsLoading(false));
@@ -510,7 +536,7 @@ function NewStoryPageContent() {
                         if (isStory) {
                             setFormData(prev => ({ ...prev, ...seoData, image_alt: parsed.image_alt || prev.image_alt }));
                         } else {
-                            setStartupData(prev => ({ ...prev, ...seoData }));
+                            setStartupData(prev => ({ ...prev, ...seoData, image_alt: parsed.image_alt || prev.image_alt }));
                         }
                         toast.success(`✨ SEO metadata for ${publishType} generated!`);
                     } else {
@@ -529,7 +555,7 @@ function NewStoryPageContent() {
                         if (isStory) {
                             setFormData(prev => ({ ...prev, ...seoData, image_alt: fallback.image_alt || prev.image_alt }));
                         } else {
-                            setStartupData(prev => ({ ...prev, ...seoData }));
+                            setStartupData(prev => ({ ...prev, ...seoData, image_alt: fallback.image_alt || prev.image_alt }));
                         }
                         toast.success("✨ SEO metadata generated via fallback!");
                     }
@@ -732,6 +758,32 @@ function NewStoryPageContent() {
                     toast.success(targetStatus === 'published' ? "🎉 Story published!" : "💾 Draft saved!");
                 }
                 router.push("/dashboard/stories");
+            } else if (publishType === "submission") {
+                if (!startupData.name.trim()) { toast.error("Please enter startup name!"); setIsPublishing(false); return; }
+
+                const submissionData = {
+                    startup_name: startupData.name,
+                    website: startupData.website_url,
+                    founder_name: startupData.founder_name,
+                    description: startupData.tagline,
+                    full_story: startupData.description,
+                    category: startupData.category,
+                    city: startupData.city,
+                    funding_stage: startupData.stage,
+                    business_model: startupData.business_model,
+                    logo: startupData.logo,
+                    thumbnail: startupData.og_image,
+                    og_image: startupData.og_image,
+                    meta_title: startupData.meta_title,
+                    meta_description: startupData.meta_description,
+                    meta_keywords: startupData.meta_keywords,
+                    image_alt: startupData.image_alt,
+                    status: startupData.status
+                };
+
+                await updateSubmission(parseInt(submissionId!), submissionData);
+                toast.success("Submission updated successfully!");
+                router.push("/dashboard/submissions");
             } else {
                 if (!startupData.name.trim()) { toast.error("Please enter startup name!"); setIsPublishing(false); return; }
                 if (!startupData.slug.trim()) { toast.error("Please provide a URL slug!"); setIsPublishing(false); return; }
@@ -769,9 +821,41 @@ function NewStoryPageContent() {
                         </button>
                         <div className="flex flex-col">
                             <h1 className="text-xl font-bold tracking-tight text-zinc-900 mt-1">
-                                Write a Story
+                                {publishType === 'story' ? 'Write a Story' : (publishType === 'submission' ? 'Review Submission' : 'Venture Profile')}
                             </h1>
                         </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 p-1 bg-zinc-100/50 rounded-xl border border-zinc-200/50">
+                        <button
+                            onClick={() => setPublishType("story")}
+                            className={cn(
+                                "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                                publishType === "story" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-zinc-600"
+                            )}
+                        >
+                            Story
+                        </button>
+                        {submissionId && (
+                            <button
+                                onClick={() => setPublishType("submission")}
+                                className={cn(
+                                    "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                                    publishType === "submission" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-zinc-600"
+                                )}
+                            >
+                                Submission
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setPublishType("startup")}
+                            className={cn(
+                                "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                                publishType === "startup" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-zinc-600"
+                            )}
+                        >
+                            Venture
+                        </button>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1128,6 +1212,43 @@ function NewStoryPageContent() {
                             </>
                         ) : (
                             <>
+                                {/* Submission Status (Only for submission type) */}
+                                {publishType === 'submission' && (
+                                    <div className="flex flex-wrap gap-2 mb-6 p-4 rounded-2xl bg-zinc-50 border border-zinc-100 items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-zinc-200">Current Status</Badge>
+                                            <span className={cn(
+                                                "text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md",
+                                                startupData.status === 'pending' ? "bg-amber-100 text-amber-700" :
+                                                    startupData.status === 'approved' ? "bg-emerald-100 text-emerald-700" :
+                                                        "bg-rose-100 text-rose-700"
+                                            )}>
+                                                {startupData.status}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                onClick={() => updateSubmissionStatus(parseInt(submissionId!), 'pending').then(() => setStartupData(prev => ({ ...prev, status: 'pending' })))}
+                                                className={cn("px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all", startupData.status === 'pending' ? "bg-amber-600 text-white shadow-md shadow-amber-200" : "bg-white text-zinc-400 border border-zinc-100")}
+                                            >
+                                                Pending
+                                            </button>
+                                            <button
+                                                onClick={() => updateSubmissionStatus(parseInt(submissionId!), 'approved').then(() => setStartupData(prev => ({ ...prev, status: 'approved' })))}
+                                                className={cn("px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all", startupData.status === 'approved' ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "bg-white text-zinc-400 border border-zinc-100")}
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                onClick={() => updateSubmissionStatus(parseInt(submissionId!), 'rejected').then(() => setStartupData(prev => ({ ...prev, status: 'rejected' })))}
+                                                className={cn("px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all", startupData.status === 'rejected' ? "bg-rose-600 text-white shadow-md shadow-rose-200" : "bg-white text-zinc-400 border border-zinc-100")}
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Startup Identity Card */}
                                 <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
                                     <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
@@ -1135,7 +1256,7 @@ function NewStoryPageContent() {
                                             <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
                                                 <Building2 className="h-3 w-3 text-white" />
                                             </div>
-                                            Venture Identity
+                                            {publishType === 'submission' ? 'Submission Details' : 'Venture Identity'}
                                         </CardTitle>
                                         <Button
                                             onClick={handleGenerateStartupContent}
@@ -1158,20 +1279,81 @@ function NewStoryPageContent() {
                                                         setStartupData(prev => ({
                                                             ...prev,
                                                             name: newName,
-                                                            slug: prev.slug || newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+                                                            slug: isSlugSynced ? generateSlugFromText(newName) : prev.slug
                                                         }));
                                                     }}
                                                     className="h-11 px-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 transition-all font-semibold"
                                                 />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">URL Slug</Label>
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">URL Slug</Label>
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                const newState = !isSlugSynced;
+                                                                setIsSlugSynced(newState);
+                                                                if (newState && startupData.name) {
+                                                                    setStartupData(prev => ({ ...prev, slug: generateSlugFromText(startupData.name) }));
+                                                                }
+                                                            }}
+                                                            className={cn(
+                                                                "h-6 px-2 text-[9px] font-bold rounded-lg transition-all",
+                                                                isSlugSynced ? "text-emerald-600 bg-emerald-50" : "text-zinc-400 hover:text-zinc-600"
+                                                            )}
+                                                            title={isSlugSynced ? "Slug is synced with name" : "Sync slug with name"}
+                                                        >
+                                                            {isSlugSynced ? <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> : <Plus className="h-2.5 w-2.5 mr-1" />}
+                                                            {isSlugSynced ? "Synced" : "Sync"}
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={async () => {
+                                                                if (!startupData.name) {
+                                                                    toast.error("Please enter a startup name first!");
+                                                                    return;
+                                                                }
+                                                                setIsGenerating(true);
+                                                                try {
+                                                                    const template = await getPromptTemplate("Slug Generator");
+                                                                    const prompt = fillTemplate(template, { title: startupData.name });
+                                                                    const result = await generateContent(prompt);
+                                                                    if (result.content) {
+                                                                        const cleanSlug = generateSlugFromText(result.content);
+                                                                        setStartupData(prev => ({ ...prev, slug: cleanSlug }));
+                                                                        setSlugManuallyEdited(true);
+                                                                        setIsSlugSynced(false);
+                                                                        toast.success("AI generated slug!");
+                                                                    }
+                                                                } catch (err: any) {
+                                                                    toast.error("Failed to generate slug");
+                                                                } finally {
+                                                                    setIsGenerating(false);
+                                                                }
+                                                            }}
+                                                            disabled={isGenerating}
+                                                            className="h-6 px-2 text-[9px] font-bold text-primary hover:text-primary/90 hover:bg-indigo-50 rounded-lg"
+                                                        >
+                                                            {isGenerating ? <Loader2 className="h-2.5 w-2.5 mr-1 animate-spin" /> : <Sparkles className="h-2.5 w-2.5 mr-1" />}
+                                                            AI Slug
+                                                        </Button>
+                                                    </div>
+                                                </div>
                                                 <div className="relative">
                                                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">/startups/</div>
                                                     <Input
                                                         placeholder="acme-fintech"
                                                         value={startupData.slug}
-                                                        onChange={(e) => setStartupData({ ...startupData, slug: e.target.value })}
+                                                        onChange={(e) => {
+                                                            setStartupData({ ...startupData, slug: e.target.value });
+                                                            setSlugManuallyEdited(true);
+                                                            setIsSlugSynced(false);
+                                                        }}
                                                         className="h-11 pl-16 pr-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 font-medium"
                                                     />
                                                 </div>
@@ -1341,7 +1523,7 @@ function NewStoryPageContent() {
                                             Startup Journey
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="p-0">
+                                    <CardContent className="p-0 min-h-[600px] bg-slate-50/5">
                                         <RichTextEditor
                                             content={startupData.description}
                                             onChange={(val) => setStartupData({ ...startupData, description: val })}
@@ -1452,6 +1634,95 @@ function NewStoryPageContent() {
                                         </div>
                                     </CardContent>
                                 </Card>
+
+                                {!isStory && (
+                                    <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white mt-6">
+                                        <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50">
+                                            <CardTitle className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                                <ImageIcon className="h-3.5 w-3.5" /> Startup Logo
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-5">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                                <div
+                                                    onClick={() => document.getElementById('thumbnail-upload-main')?.click()}
+                                                    className="aspect-square max-w-[200px] mx-auto w-full rounded-2xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:bg-slate-50/50 hover:border-indigo-300 transition-all shadow-inner"
+                                                >
+                                                    {currentThumbnail ? (
+                                                        <>
+                                                            <img src={getSafeImageSrc(currentThumbnail)} alt="Logo" className="h-full w-full object-contain p-4" />
+                                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                <span className="text-white text-[10px] font-bold bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">Change Logo</span>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="flex flex-col items-center gap-3 opacity-50 group-hover:opacity-100 group-hover:text-indigo-600 transition-all">
+                                                            <div className="h-10 w-10 rounded-full bg-white shadow-md flex items-center justify-center border border-zinc-200 group-hover:border-indigo-300">
+                                                                <Plus className="h-5 w-5" />
+                                                            </div>
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">Add Logo</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Media Library</Label>
+                                                            <Link href="/dashboard/media" target="_blank" className="text-[9px] text-purple-600 font-bold hover:underline flex items-center gap-1">
+                                                                <Plus size={8} /> Open Library
+                                                            </Link>
+                                                        </div>
+                                                        <select
+                                                            className="w-full h-10 rounded-xl border border-zinc-100 bg-zinc-50 px-3 text-xs font-bold text-zinc-700 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500/10"
+                                                            value={currentThumbnail || ""}
+                                                            onChange={(e) => setThumbnail(e.target.value)}
+                                                        >
+                                                            <option value="">— Choose an asset —</option>
+                                                            {mediaItems.map((m: any) => (
+                                                                <option key={m.id} value={m.url}>{m.title || m.url || "Untitled"}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Logo URL / Upload</Label>
+                                                        <input
+                                                            id="thumbnail-upload-main"
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="hidden"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    const reader = new FileReader();
+                                                                    reader.onloadend = () => setThumbnail(reader.result as string);
+                                                                    reader.readAsDataURL(file);
+                                                                }
+                                                            }}
+                                                        />
+                                                        <Input
+                                                            placeholder="Or paste logo URL..."
+                                                            value={currentThumbnail || ""}
+                                                            onChange={(e) => setThumbnail(e.target.value)}
+                                                            className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-[11px] font-bold focus:bg-white"
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Logo Alt Text (SEO)</Label>
+                                                        <Input
+                                                            placeholder="Descriptive text for accessibility..."
+                                                            value={startupData.image_alt}
+                                                            onChange={(e) => setStartupData(prev => ({ ...prev, image_alt: e.target.value }))}
+                                                            className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-[11px] font-bold focus:bg-white"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
                             </>
                         )}
                     </div>
@@ -1558,11 +1829,16 @@ function NewStoryPageContent() {
 
 
                         {submissionDetails && (
-                            <Card className="border-blue-200/60 shadow-sm rounded-2xl overflow-hidden bg-blue-50/50">
-                                <CardHeader className="p-5 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-white">
-                                    <CardTitle className="text-xs font-black text-blue-500 uppercase tracking-widest flex items-center gap-2">
-                                        <Lightbulb className="h-4 w-4" /> Submission Source
-                                    </CardTitle>
+                            <Card className="border-2 border-blue-500/30 shadow-lg rounded-2xl overflow-hidden bg-blue-50/20 backdrop-blur-sm">
+                                <CardHeader className="p-4 border-b border-blue-100 bg-blue-100/30">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-2">
+                                            <Sparkles className="h-3 w-3" /> Submission Source
+                                        </CardTitle>
+                                        <div className="px-2 py-0.5 rounded-full bg-blue-500 text-[8px] font-black text-white uppercase tracking-tighter">
+                                            Original Data
+                                        </div>
+                                    </div>
                                 </CardHeader>
                                 <CardContent className="p-5 space-y-4">
                                     <div className="flex items-center gap-4">
@@ -1581,7 +1857,9 @@ function NewStoryPageContent() {
                                     <div className="space-y-3 pt-2">
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <Label className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Founder</Label>
+                                                <div className="flex items-center justify-between mb-0.5">
+                                                    <Label className="text-[9px] font-black text-blue-400 uppercase tracking-widest text-[8px]">Founder</Label>
+                                                </div>
                                                 <div className="text-[11px] font-bold text-blue-800">{submissionDetails.founder_name}</div>
                                             </div>
                                             <div>
@@ -1596,17 +1874,56 @@ function NewStoryPageContent() {
                                             </div>
                                         </div>
                                         {submissionDetails.description && (
-                                            <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm">
-                                                <Label className="text-[9px] font-black text-blue-300 uppercase tracking-widest mb-1 block">Quick Pitch</Label>
-                                                <p className="text-[11px] font-medium text-blue-700 leading-relaxed max-h-20 overflow-y-auto">
+                                            <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-[9px] font-black text-blue-300 uppercase tracking-widest block">Quick Pitch</Label>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="h-5 px-1.5 text-[7px] font-black text-blue-400 hover:bg-blue-50 uppercase tracking-widest"
+                                                        onClick={() => {
+                                                            setStartupData(prev => ({ ...prev, tagline: submissionDetails.description }));
+                                                            toast.success("Set as Tagline!");
+                                                        }}
+                                                    >
+                                                        Use as Tagline
+                                                    </Button>
+                                                </div>
+                                                <p className="text-[11px] font-medium text-blue-700 leading-relaxed max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-100">
                                                     {submissionDetails.description}
                                                 </p>
                                             </div>
                                         )}
                                         {submissionDetails.full_story && (
-                                            <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm">
-                                                <Label className="text-[9px] font-black text-blue-300 uppercase tracking-widest mb-1 block">Full Story</Label>
-                                                <p className="text-[11px] font-medium text-blue-700 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-wrap">
+                                            <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-[9px] font-black text-blue-300 uppercase tracking-widest block">Full Story</Label>
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 px-2 text-[8px] font-black text-blue-500 hover:bg-blue-50 bg-blue-50/30 rounded-lg uppercase tracking-wider"
+                                                            onClick={() => {
+                                                                setStartupData(prev => ({ ...prev, description: submissionDetails.full_story }));
+                                                                toast.success("Copied to Startup Journey!");
+                                                            }}
+                                                        >
+                                                            Use for Journey
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 px-2 text-[8px] font-black text-indigo-500 hover:bg-indigo-50 bg-indigo-50/30 rounded-lg uppercase tracking-wider"
+                                                            onClick={() => {
+                                                                setFormData(prev => ({ ...prev, content: submissionDetails.full_story }));
+                                                                toast.success("Copied to Story Content!");
+                                                            }}
+                                                        >
+                                                            Use as Story
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                <p className="text-[11px] font-medium text-blue-700 leading-relaxed max-h-60 overflow-y-auto whitespace-pre-wrap scrollbar-thin scrollbar-thumb-blue-100">
                                                     {submissionDetails.full_story}
                                                 </p>
                                             </div>
@@ -1616,82 +1933,94 @@ function NewStoryPageContent() {
                             </Card>
                         )}
                         {/* Cover Image */}
-                        <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
-                            <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50">
-                                <CardTitle className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                                    <ImageIcon className="h-3.5 w-3.5" /> {isStory ? "Cover Image" : "Startup Logo"}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-5 space-y-4">
-                                <div className="space-y-4">
-                                    <div
-                                        onClick={() => document.getElementById('thumbnail-upload')?.click()}
-                                        className="aspect-video w-full rounded-xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:bg-indigo-50/30 hover:border-indigo-300 transition-all"
-                                    >
-                                        {currentThumbnail ? (
-                                            <>
-                                                <img src={getSafeImageSrc(currentThumbnail)} alt="Cover" className="h-full w-full object-cover" />
-                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <span className="text-white text-xs font-bold bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">Change Image</span>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-3 opacity-50 group-hover:opacity-100 group-hover:text-indigo-600 transition-all">
-                                                <div className="h-12 w-12 rounded-full bg-white shadow-md flex items-center justify-center border-2 border-zinc-200 group-hover:border-indigo-300">
-                                                    <Plus className="h-6 w-6" />
-                                                </div>
-                                                <span className="text-xs font-bold">Add Image</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Pick from Media Library</Label>
-                                            <Link href="/dashboard/media" target="_blank" className="text-[9px] text-purple-600 font-bold hover:underline flex items-center gap-1">
-                                                <Plus size={8} /> Open Library
-                                            </Link>
-                                        </div>
-                                        <select
-                                            className="w-full h-10 rounded-xl border border-zinc-100 bg-zinc-50 px-3 text-xs font-bold text-zinc-700 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500/10"
-                                            value={currentThumbnail || ""}
-                                            onChange={(e) => setThumbnail(e.target.value)}
+                        {isStory && (
+                            <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50">
+                                    <CardTitle className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                        <ImageIcon className="h-3.5 w-3.5" /> Cover Image
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-5 space-y-4">
+                                    <div className="space-y-4">
+                                        <div
+                                            onClick={() => document.getElementById('thumbnail-upload')?.click()}
+                                            className="aspect-video w-full rounded-xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:bg-indigo-50/30 hover:border-indigo-300 transition-all"
                                         >
-                                            <option value="">— Choose an asset —</option>
-                                            {mediaItems.map((m: any) => (
-                                                <option key={m.id} value={m.url}>{m.title || m.url || "Untitled"}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                            {currentThumbnail ? (
+                                                <>
+                                                    <img src={getSafeImageSrc(currentThumbnail)} alt="Cover" className="h-full w-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <span className="text-white text-xs font-bold bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">Change Image</span>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-3 opacity-50 group-hover:opacity-100 group-hover:text-indigo-600 transition-all">
+                                                    <div className="h-12 w-12 rounded-full bg-white shadow-md flex items-center justify-center border-2 border-zinc-200 group-hover:border-indigo-300">
+                                                        <Plus className="h-6 w-6" />
+                                                    </div>
+                                                    <span className="text-xs font-bold">Add Image</span>
+                                                </div>
+                                            )}
+                                        </div>
 
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Direct URL / Upload</Label>
-                                        <input
-                                            id="thumbnail-upload"
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    const reader = new FileReader();
-                                                    reader.onloadend = () => {
-                                                        setThumbnail(reader.result as string);
-                                                    };
-                                                    reader.readAsDataURL(file);
-                                                }
-                                            }}
-                                        />
-                                        <Input
-                                            placeholder="Or paste image URL..."
-                                            value={currentThumbnail || ""}
-                                            onChange={(e) => setThumbnail(e.target.value)}
-                                            className="h-10 rounded-xl bg-secondary border-border text-[11px] font-bold focus:bg-white"
-                                        />
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Pick from Media Library</Label>
+                                                <Link href="/dashboard/media" target="_blank" className="text-[9px] text-purple-600 font-bold hover:underline flex items-center gap-1">
+                                                    <Plus size={8} /> Open Library
+                                                </Link>
+                                            </div>
+                                            <select
+                                                className="w-full h-10 rounded-xl border border-zinc-100 bg-zinc-50 px-3 text-xs font-bold text-zinc-700 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500/10"
+                                                value={currentThumbnail || ""}
+                                                onChange={(e) => setThumbnail(e.target.value)}
+                                            >
+                                                <option value="">— Choose an asset —</option>
+                                                {mediaItems.map((m: any) => (
+                                                    <option key={m.id} value={m.url}>{m.title || m.url || "Untitled"}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Direct URL / Upload</Label>
+                                            <input
+                                                id="thumbnail-upload"
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            setThumbnail(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                            <Input
+                                                placeholder="Or paste image URL..."
+                                                value={currentThumbnail || ""}
+                                                onChange={(e) => setThumbnail(e.target.value)}
+                                                className="h-10 rounded-xl bg-secondary border-border text-[11px] font-bold focus:bg-white"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Image Alt Text (SEO)</Label>
+                                            <Input
+                                                placeholder="Descriptive text for accessibility..."
+                                                value={formData.image_alt}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, image_alt: e.target.value }))}
+                                                className="h-10 rounded-xl bg-secondary border-border text-[11px] font-bold focus:bg-white"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        )}
 
 
                         {/* Publication Status */}

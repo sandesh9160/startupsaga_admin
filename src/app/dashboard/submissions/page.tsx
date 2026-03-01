@@ -1,37 +1,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
 import { useRouter } from "next/navigation";
 import {
     Search,
     Clock,
     CheckCircle2,
     XCircle,
-    // Building2,
+    Building2,
     Mail,
     Inbox,
     Trash2,
     Edit,
-    FilePlus,
-    Clock3,
+    FileText,
     Globe,
-    Plus,
-    ImageIcon,
-    Building,
     User,
-    ChevronRight,
     Sparkles,
-    Layout,
-    Save,
     MapPin,
-    Tag,
-    Loader2
+    Calendar,
+    Building
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+// import { Label } from "@/components/ui/label";
+// import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -74,24 +68,6 @@ export default function SubmissionsPage() {
     const [pagination, setPagination] = useState<PaginatedResponse<Submission> | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 15;
-
-    // Edit Modal State
-    const [editingSubmission, setEditingSubmission] = useState<any>(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const [editForm, setEditForm] = useState({
-        startup_name: "",
-        founder_name: "",
-        email: "",
-        website: "",
-        description: "",
-        city: "",
-        category: "",
-        full_story: "",
-        funding_stage: "",
-        logo: "" as string | null,
-        thumbnail: "" as string | null,
-        og_image: "" as string | null
-    });
 
     const loadSubmissions = async (showLoading = true) => {
         if (showLoading) setIsLoading(true);
@@ -146,59 +122,9 @@ export default function SubmissionsPage() {
         }
     };
 
-    const handleEditClick = (submission: any) => {
-        setEditingSubmission(submission);
-        setEditForm({
-            startup_name: submission.startup_name || "",
-            founder_name: submission.founder_name || "",
-            email: submission.email || "",
-            website: submission.website || "",
-            description: submission.description || "",
-            city: submission.city || "",
-            category: submission.category || "",
-            full_story: submission.full_story || "",
-            funding_stage: submission.funding_stage || "Early Stage",
-            logo: submission.logo || null,
-            thumbnail: submission.thumbnail || null,
-            og_image: submission.og_image || null
-        });
-    };
-
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'logo' | 'thumbnail' | 'og_image') => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setEditForm(prev => ({ ...prev, [field]: reader.result as string }));
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleSaveEdit = async () => {
-        if (!editingSubmission) return;
-        setIsSaving(true);
-        try {
-            await updateSubmission(editingSubmission.id, editForm);
-            toast.success("Submission updated successfully");
-            setEditingSubmission(null);
-            loadSubmissions(false);
-        } catch (err) {
-            toast.error("Failed to update submission");
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const statusPriority: Record<string, number> = {
-        approved: 1,
-        pending: 2,
-        rejected: 3
-    };
+    const pendingCount = submissions.filter(s => s.status === 'pending').length;
 
     const filteredSubmissions = submissions;
-
-    const pendingCount = submissions.filter(s => s.status === 'pending').length;
 
     return (
         <div className="min-h-screen bg-white text-zinc-900 font-sans pb-10">
@@ -265,17 +191,18 @@ export default function SubmissionsPage() {
                 </div>
 
                 {/* CONTENT */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-10">
                     {isLoading && submissions.length === 0 ? (
-                        [...Array(8)].map((_, i) => (
-                            <div key={i} className="h-64 rounded-2xl bg-white border border-slate-100 shadow-sm animate-pulse" />
+                        [...Array(4)].map((_, i) => (
+                            <div key={i} className="h-[450px] rounded-[2.5rem] bg-white border border-slate-100 shadow-sm animate-pulse" />
                         ))
                     ) : filteredSubmissions.length === 0 ? (
-                        <div className="col-span-full flex flex-col items-center justify-center p-20 text-center rounded-3xl bg-white border border-slate-100 shadow-sm">
-                            <Inbox size={32} className="text-slate-300 mb-4" />
-                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-1">
-                                No Applications
+                        <div className="col-span-full flex flex-col items-center justify-center p-32 text-center rounded-[3rem] bg-zinc-50 border border-dashed border-zinc-200 shadow-sm">
+                            <Inbox size={64} className="text-zinc-200 mb-6" />
+                            <h3 className="text-2xl font-bold text-zinc-900 mb-2">
+                                Empty Queue
                             </h3>
+                            <p className="text-zinc-500 max-w-xs">No startup applications match your current filters.</p>
                         </div>
                     ) : (
                         <AnimatePresence mode="popLayout">
@@ -283,140 +210,180 @@ export default function SubmissionsPage() {
                                 <motion.div
                                     key={submission.id}
                                     layout
-                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    initial={{ opacity: 0, scale: 0.98 }}
                                     animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="group/card relative flex flex-col bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all overflow-hidden"
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    className="group/card relative flex flex-col bg-white rounded-[2.5rem] border border-zinc-200/60 shadow-md hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-700 overflow-hidden"
                                 >
-                                    {/* Card Header Section - Now matches Hubs style */}
-                                    <div className="relative h-32 bg-slate-100 flex items-center justify-center overflow-hidden">
+                                    {/* Substantial Card Header - Much taller */}
+                                    <div className="relative h-64 bg-zinc-100 flex items-center justify-center overflow-hidden">
                                         {submission.thumbnail ? (
                                             <img
                                                 src={getSafeImageSrc(submission.thumbnail)}
                                                 alt={submission.startup_name}
-                                                className="h-full w-full object-cover group-hover/card:scale-110 transition-transform duration-700"
+                                                className="h-full w-full object-cover group-hover/card:scale-105 transition-transform duration-[1500ms]"
                                             />
-                                        ) : submission.logo ? (
-                                            <div className="w-full h-full bg-slate-100 flex items-center justify-center p-6">
-                                                <img
-                                                    src={getSafeImageSrc(submission.logo)}
-                                                    alt={submission.startup_name}
-                                                    className="max-h-full max-w-full object-contain group-hover/card:scale-110 transition-transform duration-700"
-                                                />
-                                            </div>
                                         ) : (
-                                            <div className="h-full w-full flex items-center justify-center bg-slate-50 text-slate-300 transition-colors duration-500 group-hover/card:bg-slate-100">
-                                                <Building size={32} className="opacity-20" />
+                                            <div className="h-full w-full flex items-center justify-center bg-zinc-50">
+                                                <Building2 size={80} className="text-zinc-100" />
                                             </div>
                                         )}
 
-                                        {/* Overlay Gradient */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90" />
+                                        {/* Premium Overlay */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-90" />
 
-                                        {/* Status Badge */}
-                                        <div className="absolute top-3 right-3">
+                                        {/* Status & Identifiers */}
+                                        <div className="absolute top-6 left-6 flex flex-col gap-3">
                                             <Badge className={cn(
-                                                "backdrop-blur-md border-none font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 shadow-sm",
+                                                "w-fit backdrop-blur-md border-none font-black text-[11px] uppercase tracking-[0.2em] px-4 py-1.5 shadow-2xl",
                                                 submission.status === 'pending'
-                                                    ? "bg-amber-500/90 text-white"
+                                                    ? "bg-orange-500 text-white animate-pulse"
                                                     : submission.status === 'approved'
-                                                        ? "bg-emerald-500/90 text-white"
-                                                        : "bg-rose-500/90 text-white"
+                                                        ? "bg-emerald-500 text-white"
+                                                        : "bg-rose-500 text-white"
                                             )}>
                                                 {submission.status}
                                             </Badge>
+                                            {submission.category && (
+                                                <div className="w-fit px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-widest">
+                                                    {submission.category}
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {/* Logo Inset if thumbnail exists */}
-                                        {submission.thumbnail && submission.logo && (
-                                            <div className="absolute top-3 left-3 h-8 w-8 rounded-lg bg-white/95 backdrop-blur-sm p-1 shadow-lg border border-white/50 group-hover/card:scale-105 transition-transform">
-                                                <img
-                                                    src={getSafeImageSrc(submission.logo)}
-                                                    alt=""
-                                                    className="w-full h-full object-contain"
-                                                />
-                                            </div>
-                                        )}
+                                        {/* Floating Actions/Logo */}
+                                        <div className="absolute top-6 right-6">
+                                            {submission.logo ? (
+                                                <div className="h-16 w-16 rounded-[1.25rem] bg-white p-2.5 shadow-2xl border border-white/50 group-hover/card:rotate-3 transition-all duration-500">
+                                                    <img
+                                                        src={getSafeImageSrc(submission.logo)}
+                                                        alt=""
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="h-16 w-16 rounded-[1.25rem] bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
+                                                    <Sparkles className="text-white h-7 w-7" />
+                                                </div>
+                                            )}
+                                        </div>
 
-                                        {/* OG Image Indicator if present */}
-                                        {submission.og_image && (
-                                            <div className="absolute top-10 right-3 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-600/90 backdrop-blur-sm text-white text-[8px] font-black uppercase tracking-widest shadow-lg border border-indigo-400/30">
-                                                <Globe size={8} /> OG Active
+                                        {/* Main Identity Overlay */}
+                                        <div className="absolute bottom-8 left-8 right-8 text-white">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <h3 className="text-3xl font-black tracking-tighter drop-shadow-lg line-clamp-1">
+                                                    {submission.startup_name}
+                                                </h3>
+                                                {submission.og_image && <div className="h-6 w-6 rounded-full bg-indigo-500 flex items-center justify-center shadow-lg"><Globe size={12} className="text-white" /></div>}
                                             </div>
-                                        )}
 
-                                        {/* Bottom Content Over Image */}
-                                        <div className="absolute bottom-3 left-3 right-3 text-white pointer-events-none">
-                                            <h3 className="text-sm font-serif font-medium tracking-tight mb-0.5 group-hover/card:translate-x-0.5 transition-transform overflow-hidden whitespace-nowrap text-overflow-ellipsis">
-                                                {submission.startup_name}
-                                            </h3>
-                                            <div className="flex items-center gap-1.5 opacity-80 group-hover/card:opacity-100 transition-opacity">
-                                                <Mail size={10} className="shrink-0" />
-                                                <span className="text-[10px] font-medium truncate">{submission.email}</span>
+                                            <div className="flex flex-wrap items-center gap-6">
+                                                <div className="flex items-center gap-2 text-zinc-300">
+                                                    <div className="h-7 w-7 rounded-lg bg-white/10 flex items-center justify-center">
+                                                        <Mail size={14} />
+                                                    </div>
+                                                    <span className="text-sm font-semibold tracking-tight">{submission.email}</span>
+                                                </div>
+                                                {submission.city && (
+                                                    <div className="flex items-center gap-2 text-zinc-300">
+                                                        <div className="h-7 w-7 rounded-lg bg-white/10 flex items-center justify-center">
+                                                            <MapPin size={14} />
+                                                        </div>
+                                                        <span className="text-sm font-semibold tracking-tight">{submission.city}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Body Section for Actions */}
-                                    <div className="px-4 py-3 bg-white flex items-center justify-between border-t border-slate-50">
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] uppercase font-bold text-slate-400 tracking-widest">Received</span>
-                                            <span className="text-[10px] font-bold text-slate-600">
-                                                {new Date(submission.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                            </span>
+                                    {/* Comprehensive Action Layout */}
+                                    <div className="p-8 bg-white flex flex-col gap-8">
+                                        <div className="flex items-center justify-between px-2">
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-12 w-12 rounded-2xl bg-zinc-50 flex items-center justify-center border border-zinc-100">
+                                                    <User className="h-6 w-6 text-zinc-400" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] uppercase font-black text-zinc-400 tracking-[0.15em]">Founder Identity</span>
+                                                    <span className="text-lg font-bold text-zinc-900 leading-tight">{submission.founder_name || "Anonymous Founder"}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-4 text-right">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] uppercase font-black text-zinc-400 tracking-[0.15em]">Cycle Phase</span>
+                                                    <div className="flex items-center gap-2 justify-end">
+                                                        <Calendar size={14} className="text-zinc-400" />
+                                                        <span className="text-sm font-bold text-zinc-700">
+                                                            {new Date(submission.created_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div className="flex gap-1">
-                                            {submission.status === 'pending' && (
-                                                <>
+                                        {/* Large, Neat Interactive Buttons */}
+                                        <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-zinc-50">
+                                            <div className="flex gap-3 flex-1 min-w-[300px]">
+                                                {submission.status === 'pending' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleStatusUpdate(submission.id, 'approved')}
+                                                            className="flex-1 h-16 rounded-[1.25rem] bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/btn"
+                                                        >
+                                                            <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
+                                                                <CheckCircle2 size={20} strokeWidth={3} />
+                                                            </div>
+                                                            <span className="text-[11px] font-black uppercase tracking-widest">Approve</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleStatusUpdate(submission.id, 'rejected')}
+                                                            className="flex-1 h-16 rounded-[1.25rem] bg-zinc-900 hover:bg-rose-600 text-white shadow-xl shadow-zinc-900/10 flex items-center justify-center gap-3 transition-all active:scale-95 group/btn"
+                                                        >
+                                                            <div className="h-8 w-8 rounded-lg bg-white/10 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
+                                                                <XCircle size={20} strokeWidth={3} />
+                                                            </div>
+                                                            <span className="text-[11px] font-black uppercase tracking-widest">Dismiss</span>
+                                                        </button>
+                                                    </>
+                                                )}
+
+                                                {submission.status === 'approved' && (
                                                     <button
-                                                        onClick={() => handleStatusUpdate(submission.id, 'approved')}
-                                                        className="h-7 w-7 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-100 flex items-center justify-center transition-all shadow-sm"
-                                                        title="Verify Startup"
+                                                        onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=startup`)}
+                                                        className="flex-1 h-16 rounded-[1.25rem] bg-purple-600 hover:bg-purple-700 text-white shadow-xl shadow-purple-500/20 flex items-center justify-center gap-4 transition-all active:scale-95 group/btn"
                                                     >
-                                                        <CheckCircle2 size={12} />
+                                                        <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                                                            <Building2 size={24} strokeWidth={2.5} />
+                                                        </div>
+                                                        <span className="text-xs font-black uppercase tracking-widest">Build Venture Profile</span>
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleStatusUpdate(submission.id, 'rejected')}
-                                                        className="h-7 w-7 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-100 flex items-center justify-center transition-all shadow-sm"
-                                                        title="Archive"
-                                                    >
-                                                        <XCircle size={12} />
-                                                    </button>
-                                                </>
-                                            )}
-                                            {submission.status === 'approved' && (submission as any).startup_slug ? (
+                                                )}
+                                            </div>
+
+                                            <div className="flex gap-3 ml-auto">
                                                 <button
-                                                    onClick={() => router.push(`/dashboard/startups/${(submission as any).startup_slug}/edit`)}
-                                                    className="h-7 w-7 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-100 flex items-center justify-center transition-all shadow-sm"
-                                                    title="Configure Startup Profile"
+                                                    onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=submission`)}
+                                                    className="h-16 w-16 rounded-[1.25rem] bg-zinc-50 hover:bg-zinc-100 text-zinc-900 border border-zinc-200 flex items-center justify-center transition-all hover:-translate-y-1 shadow-sm"
+                                                    title="Refine Data"
                                                 >
-                                                    <Building size={12} />
+                                                    <Edit size={22} />
                                                 </button>
-                                            ) : (
                                                 <button
-                                                    onClick={() => handleEditClick(submission)}
-                                                    className="h-7 w-7 rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-900 hover:text-white border border-slate-200 flex items-center justify-center transition-all shadow-sm"
-                                                    title="Edit Details"
+                                                    onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=story`)}
+                                                    className="h-16 w-16 rounded-[1.25rem] bg-zinc-50 hover:bg-indigo-50 text-indigo-600 border border-zinc-200 flex items-center justify-center transition-all hover:-translate-y-1 shadow-sm"
+                                                    title="Write Feature"
                                                 >
-                                                    <Edit size={12} />
+                                                    <FileText size={22} />
                                                 </button>
-                                            )}
-                                            <button
-                                                onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}`)}
-                                                className="h-7 w-7 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-100 flex items-center justify-center transition-all shadow-sm"
-                                                title="Write Story"
-                                            >
-                                                <FilePlus size={12} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(submission.id)}
-                                                className="h-7 w-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-rose-600 hover:text-white border border-slate-200 flex items-center justify-center transition-all shadow-sm"
-                                                title="Delete"
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
+                                                <button
+                                                    onClick={() => handleDelete(submission.id)}
+                                                    className="h-16 w-16 rounded-[1.25rem] bg-white hover:bg-rose-50 text-zinc-300 hover:text-rose-600 border border-zinc-200 flex items-center justify-center transition-all hover:-translate-y-1"
+                                                    title="Remove"
+                                                >
+                                                    <Trash2 size={22} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -434,124 +401,7 @@ export default function SubmissionsPage() {
                 )}
             </div>
 
-            {/* EDIT SUBMISSION MODAL */}
-            <Dialog open={!!editingSubmission} onOpenChange={(open) => !open && setEditingSubmission(null)}>
-                <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto rounded-[1.5rem] border-none shadow-2xl p-0 bg-white">
-                    {/* Compact Header */}
-                    <div className="flex items-center justify-between p-5 border-b border-zinc-100 bg-zinc-50/30">
-                        <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-xl bg-purple-600 flex items-center justify-center shadow-md shadow-purple-200">
-                                <Edit className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                                <DialogTitle className="text-lg font-bold tracking-tight text-zinc-900">Edit Submission</DialogTitle>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div className="p-6 space-y-6">
-                        {/* Image Assets Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-3">
-                                <Label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                                    <ImageIcon className="h-3.5 w-3.5" /> Logo
-                                </Label>
-                                <div
-                                    onClick={() => document.getElementById('logo-upload')?.click()}
-                                    className="h-24 w-24 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-center cursor-pointer group hover:bg-white hover:border-zinc-300 transition-all overflow-hidden relative shadow-sm"
-                                >
-                                    {editForm.logo ? (
-                                        <img src={getSafeImageSrc(editForm.logo)} alt="Logo" className="w-full h-full object-contain p-3" />
-                                    ) : (
-                                        <Plus className="h-4 w-4 text-zinc-300" />
-                                    )}
-                                    <input id="logo-upload" type="file" className="hidden" onChange={(e) => handleImageUpload(e, 'logo')} />
-                                </div>
-                            </div>
-
-                            <div className="space-y-3">
-                                <Label className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                                    <ImageIcon className="h-3.5 w-3.5" /> Thumbnail
-                                </Label>
-                                <div
-                                    onClick={() => document.getElementById('thumb-upload')?.click()}
-                                    className="aspect-video w-full max-w-[240px] rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-center cursor-pointer group hover:bg-white hover:border-zinc-300 transition-all overflow-hidden relative shadow-sm"
-                                >
-                                    {editForm.thumbnail ? (
-                                        <img src={getSafeImageSrc(editForm.thumbnail)} alt="Thumb" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <ImageIcon className="h-5 w-5 text-zinc-300" />
-                                    )}
-                                    <input id="thumb-upload" type="file" className="hidden" onChange={(e) => handleImageUpload(e, 'thumbnail')} />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Text Content Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Startup Name</Label>
-                                <Input
-                                    value={editForm.startup_name}
-                                    onChange={(e) => setEditForm({ ...editForm, startup_name: e.target.value })}
-                                    className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-sm"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Founder Name</Label>
-                                <Input
-                                    value={editForm.founder_name}
-                                    onChange={(e) => setEditForm({ ...editForm, founder_name: e.target.value })}
-                                    className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-sm"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Email</Label>
-                                <Input
-                                    value={editForm.email}
-                                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                    className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-sm"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Website</Label>
-                                <Input
-                                    value={editForm.website}
-                                    onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
-                                    className="h-10 rounded-xl bg-zinc-50 border-zinc-100 text-sm"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-medium uppercase text-zinc-400 tracking-wider">Story Narrative</Label>
-                            <Textarea
-                                value={editForm.full_story}
-                                onChange={(e) => setEditForm({ ...editForm, full_story: e.target.value })}
-                                className="min-h-[160px] rounded-xl bg-zinc-50 border-zinc-100 p-4 text-xs leading-relaxed"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="p-6 bg-zinc-50/50 border-t border-zinc-100 flex items-center justify-end gap-3">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setEditingSubmission(null)}
-                            className="rounded-xl px-6 h-10 font-medium text-xs"
-                        >
-                            Cancel
-                        </Button>
-                        <button
-                            onClick={handleSaveEdit}
-                            disabled={isSaving}
-                            className="h-10 px-6 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all active:scale-95 shadow-sm shadow-purple-200 flex items-center gap-2 disabled:opacity-50"
-                        >
-                            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                            {isSaving ? "Saving..." : "Save Changes"}
-                        </button>
-                    </div>
-                </DialogContent>
-            </Dialog>
 
             <AlertDialog open={!!submissionToDelete} onOpenChange={(open) => !open && setSubmissionToDelete(null)}>
                 <AlertDialogContent className="rounded-2xl border-zinc-100 shadow-2xl">
