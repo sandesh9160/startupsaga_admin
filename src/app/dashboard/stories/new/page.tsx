@@ -74,6 +74,7 @@ type StoryFormData = {
     image_alt?: string;
     show_table_of_contents: boolean;
     status: StoryStatus;
+    og_image?: string;
 };
 
 const BUSINESS_MODELS = [
@@ -139,7 +140,8 @@ function NewStoryPageContent() {
         isFeatured: false,
         image_alt: "",
         show_table_of_contents: true,
-        status: "draft"
+        status: "draft",
+        og_image: ""
     });
 
     const [startupData, setStartupData] = useState({
@@ -366,7 +368,8 @@ function NewStoryPageContent() {
                         isFeatured: story.isFeatured || false,
                         image_alt: story.image_alt || "",
                         show_table_of_contents: story.show_table_of_contents ?? true,
-                        status
+                        status,
+                        og_image: story.og_image || ""
                     });
                     setSlugManuallyEdited(true);
                     setIsSlugSynced(false);
@@ -406,6 +409,7 @@ function NewStoryPageContent() {
                         author: prev.author || sub.founder_name || "Editorial Team",
                         meta_title: titleFromSubmission ? `How ${titleFromSubmission} is Revolutionizing ${sub.category || 'their Industry'}` : "",
                         thumbnail: sub.thumbnail || sub.logo || sub.logo_url || prev.thumbnail || "",
+                        og_image: sub.thumbnail || sub.logo || sub.logo_url || prev.og_image || "",
                     }));
                     // store submission details for UI (if needed later)
                     setSubmissionDetails(sub);
@@ -418,10 +422,10 @@ function NewStoryPageContent() {
 
 
     useEffect(() => {
-        getStartups().then(data => setStartups(data)).catch((err) => console.error("Failed to load startups", err));
-        getCategories().then(data => setCategories(data)).catch((err) => console.error("Failed to load categories", err));
-        getHubs().then(data => setHubs(data)).catch((err) => console.error("Failed to load hubs", err));
-        fetchAPI("/media/").then(data => setMediaItems(Array.isArray(data) ? data : [])).catch((err) => console.error("Failed to load media", err));
+        getStartups().then(data => setStartups((data || []).filter(Boolean))).catch((err) => console.error("Failed to load startups", err));
+        getCategories().then(data => setCategories((data || []).filter(Boolean))).catch((err) => console.error("Failed to load categories", err));
+        getHubs().then(data => setHubs((data || []).filter(Boolean))).catch((err) => console.error("Failed to load hubs", err));
+        fetchAPI("/media/").then(data => setMediaItems(Array.isArray(data) ? data.filter(Boolean) : [])).catch((err) => console.error("Failed to load media", err));
     }, []);
 
     const handleWriteWithAI = async () => {
@@ -1015,6 +1019,112 @@ function NewStoryPageContent() {
                                         />
                                     </CardContent>
                                 </Card>
+
+                                {/* Social Media Preview (OG Image) Card */}
+                                <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                    <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+                                        <CardTitle className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                            <ImageIcon className="h-3.5 w-3.5" /> Social Media Preview (OG Image)
+                                        </CardTitle>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-3 text-[10px] font-bold text-primary hover:bg-indigo-50 rounded-lg"
+                                            onClick={() => {
+                                                if (formData.thumbnail) {
+                                                    setFormData(prev => ({ ...prev, og_image: prev.thumbnail }));
+                                                    toast.success("Used thumbnail as OG image");
+                                                } else {
+                                                    toast.error("No thumbnail available to use");
+                                                }
+                                            }}
+                                        >
+                                            Use Thumbnail
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="p-5">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block">Upload OG Image</Label>
+                                                <div
+                                                    onClick={() => document.getElementById('og-image-upload-story')?.click()}
+                                                    className="aspect-[1200/630] w-full rounded-xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:bg-slate-50/50 hover:border-indigo-300 transition-all shadow-inner"
+                                                >
+                                                    {formData.og_image ? (
+                                                        <>
+                                                            <img src={getSafeImageSrc(formData.og_image)} alt="OG Preview" className="h-full w-full object-cover" />
+                                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                <span className="text-white text-xs font-bold bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">Change Image</span>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="flex flex-col items-center gap-3 opacity-50 group-hover:opacity-100 group-hover:text-indigo-600 transition-all text-center">
+                                                            <div className="h-10 w-10 rounded-full bg-white shadow-sm flex items-center justify-center border border-zinc-200">
+                                                                <Plus className="h-5 w-5" />
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-[10px] font-black uppercase tracking-widest block">Add Social Image</span>
+                                                                <span className="text-[9px] font-bold opacity-60">1200 x 630px recommended</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    id="og-image-upload-story"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                setSEO('og_image', reader.result as string);
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <Input
+                                                    placeholder="Or paste OG Image URL..."
+                                                    value={formData.og_image}
+                                                    onChange={(e) => setSEO('og_image', e.target.value)}
+                                                    className="h-10 text-xs rounded-xl bg-zinc-50"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block text-center">Social Card Preview</Label>
+                                                <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-100/50">
+                                                    <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden shadow-sm">
+                                                        <div className="aspect-[1200/630] bg-zinc-100 flex items-center justify-center overflow-hidden">
+                                                            {formData.og_image ? (
+                                                                <img src={getSafeImageSrc(formData.og_image)} alt="Facebook/Twitter Preview" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <ImageIcon className="h-10 w-10 text-zinc-200" />
+                                                            )}
+                                                        </div>
+                                                        <div className="p-4 space-y-1.5">
+                                                            <div className="text-[10px] font-bold text-zinc-400 uppercase truncate tracking-wider">
+                                                                {formData.slug || 'story-slug-preview'}
+                                                            </div>
+                                                            <div className="text-sm font-bold text-zinc-900 line-clamp-1">
+                                                                {formData.meta_title || formData.title || 'Your story title would appear here'}
+                                                            </div>
+                                                            <div className="text-[11px] text-zinc-500 line-clamp-2 leading-snug">
+                                                                {formData.meta_description || formData.excerpt || 'The meta description or story excerpt will provide a brief summary of the content to social media users...'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p className="text-[9px] text-center text-zinc-400 font-medium px-4">
+                                                    This is an approximation of how your content will appear when shared on platforms like Facebook, Twitter, and LinkedIn.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </>
                         ) : (
                             <>
@@ -1109,13 +1219,13 @@ function NewStoryPageContent() {
                                                 </Select>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Location Hub</Label>
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Location City</Label>
                                                 <Select
                                                     value={startupData.city}
                                                     onValueChange={(v) => setStartupData({ ...startupData, city: v })}
                                                 >
                                                     <SelectTrigger className="h-11 rounded-xl border-zinc-200 bg-white">
-                                                        <SelectValue placeholder="Select Hub" />
+                                                        <SelectValue placeholder="Select City" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {hubs.map((hub) => (
@@ -1237,6 +1347,109 @@ function NewStoryPageContent() {
                                             onChange={(val) => setStartupData({ ...startupData, description: val })}
                                             placeholder="Tell the full story of the startup journey..."
                                         />
+                                    </CardContent>
+                                </Card>
+
+                                {/* Startup Social Media Preview Card */}
+                                <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+                                    <CardHeader className="p-4 border-b border-zinc-100 bg-zinc-50/50 flex flex-row items-center justify-between">
+                                        <CardTitle className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                            <ImageIcon className="h-3.5 w-3.5" /> Social Media Preview (OG Image)
+                                        </CardTitle>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-3 text-[10px] font-bold text-primary hover:bg-indigo-50 rounded-lg"
+                                            onClick={() => {
+                                                if (startupData.logo) {
+                                                    setStartupData(prev => ({ ...prev, og_image: prev.logo }));
+                                                    toast.success("Used logo as OG image");
+                                                } else {
+                                                    toast.error("No logo available to use");
+                                                }
+                                            }}
+                                        >
+                                            Use Logo
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="p-5">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block">Upload OG Image</Label>
+                                                <div
+                                                    onClick={() => document.getElementById('og-image-upload-startup')?.click()}
+                                                    className="aspect-[1200/630] w-full rounded-xl bg-zinc-50 border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center group overflow-hidden relative cursor-pointer hover:bg-slate-50/50 hover:border-indigo-300 transition-all shadow-inner"
+                                                >
+                                                    {startupData.og_image ? (
+                                                        <>
+                                                            <img src={getSafeImageSrc(startupData.og_image)} alt="OG Preview" className="h-full w-full object-cover" />
+                                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                <span className="text-white text-xs font-bold bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">Change Image</span>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="flex flex-col items-center gap-3 opacity-50 group-hover:opacity-100 group-hover:text-indigo-600 transition-all text-center">
+                                                            <div className="h-10 w-10 rounded-full bg-white shadow-sm flex items-center justify-center border border-zinc-200">
+                                                                <Plus className="h-5 w-5" />
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-[10px] font-black uppercase tracking-widest block">Add Social Image</span>
+                                                                <span className="text-[9px] font-bold opacity-60">1200 x 630px recommended</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    id="og-image-upload-startup"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                setSEO('og_image', reader.result as string);
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <Input
+                                                    placeholder="Or paste OG Image URL..."
+                                                    value={startupData.og_image}
+                                                    onChange={(e) => setSEO('og_image', e.target.value)}
+                                                    className="h-10 text-xs rounded-xl bg-zinc-50"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block text-center">Social Card Preview</Label>
+                                                <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-100/50">
+                                                    <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden shadow-sm">
+                                                        <div className="aspect-[1200/630] bg-zinc-100 flex items-center justify-center overflow-hidden">
+                                                            {startupData.og_image ? (
+                                                                <img src={getSafeImageSrc(startupData.og_image)} alt="Facebook/Twitter Preview" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <ImageIcon className="h-10 w-10 text-zinc-200" />
+                                                            )}
+                                                        </div>
+                                                        <div className="p-4 space-y-1.5">
+                                                            <div className="text-[10px] font-bold text-zinc-400 uppercase truncate tracking-wider">
+                                                                {startupData.slug || 'startup-slug-preview'}
+                                                            </div>
+                                                            <div className="text-sm font-bold text-zinc-900 line-clamp-1">
+                                                                {startupData.meta_title || startupData.name || 'Startup Listing Preview'}
+                                                            </div>
+                                                            <div className="text-[11px] text-zinc-500 line-clamp-2 leading-snug">
+                                                                {startupData.meta_description || startupData.tagline || 'The startup tagline or description will appear here on social platforms...'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </>
@@ -1417,7 +1630,7 @@ function NewStoryPageContent() {
                                     >
                                         {currentThumbnail ? (
                                             <>
-                                                <img src={currentThumbnail} alt="Cover" className="h-full w-full object-cover" />
+                                                <img src={getSafeImageSrc(currentThumbnail)} alt="Cover" className="h-full w-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                     <span className="text-white text-xs font-bold bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">Change Image</span>
                                                 </div>
@@ -1441,7 +1654,7 @@ function NewStoryPageContent() {
                                         </div>
                                         <select
                                             className="w-full h-10 rounded-xl border border-zinc-100 bg-zinc-50 px-3 text-xs font-bold text-zinc-700 focus:bg-white transition-all outline-none focus:ring-2 focus:ring-indigo-500/10"
-                                            value={currentThumbnail}
+                                            value={currentThumbnail || ""}
                                             onChange={(e) => setThumbnail(e.target.value)}
                                         >
                                             <option value="">— Choose an asset —</option>
@@ -1471,7 +1684,7 @@ function NewStoryPageContent() {
                                         />
                                         <Input
                                             placeholder="Or paste image URL..."
-                                            value={currentThumbnail}
+                                            value={currentThumbnail || ""}
                                             onChange={(e) => setThumbnail(e.target.value)}
                                             className="h-10 rounded-xl bg-secondary border-border text-[11px] font-bold focus:bg-white"
                                         />
@@ -1659,8 +1872,8 @@ function NewStoryPageContent() {
                         )}
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
 

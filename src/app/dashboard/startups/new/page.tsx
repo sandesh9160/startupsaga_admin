@@ -51,6 +51,7 @@ import {
     Hub
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { getPromptTemplate, fillTemplate } from "@/lib/prompt-manager";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -117,6 +118,7 @@ function NewStartupForm() {
         meta_title: "",
         meta_description: "",
         meta_keywords: "",
+        image_alt: "",
         excerpt: "", // TL;DR
         content: "", // Startup Journey Rich Text
     });
@@ -127,8 +129,8 @@ function NewStartupForm() {
         const loadData = async () => {
             try {
                 const [cats, hbs] = await Promise.all([getCategories(), getHubs()]);
-                setCategories(cats);
-                setHubs(hbs);
+                setCategories((cats || []).filter(Boolean));
+                setHubs((hbs || []).filter(Boolean));
             } catch (err) {
                 console.error("Failed to load categories/hubs", err);
             }
@@ -305,6 +307,64 @@ function NewStartupForm() {
         const beforeMatch = formData.content.substring(0, startIndex);
         const afterMatch = formData.content.substring(startIndex + matchString.length);
         setFormData(prev => ({ ...prev, content: beforeMatch + afterMatch }));
+    };
+
+    const handleGenerateSEO = async () => {
+        if (!formData.name) { toast.error("Enter a startup name first"); return; }
+        setIsGenerating(true);
+        try {
+            const title = formData.name;
+            const description = formData.description || formData.excerpt || formData.name;
+            const content = formData.content || formData.description || formData.name;
+
+            const template = await getPromptTemplate("Startup SEO Generator");
+
+            const prompt = (template && template.includes('{title}'))
+                ? fillTemplate(template, { title, description, content, type: 'startup' })
+                : `Generate SEO metadata for a startup named "${title}". Description: ${description}. Content excerpt: ${content?.substring(0, 500)}. Return JSON with meta_title, meta_description, meta_keywords, image_alt.`;
+
+            const fullPrompt = prompt + "\n\nReturn the result strictly as a JSON object with keys: meta_title, meta_description, meta_keywords, image_alt. The meta_description MUST BE 160 characters OR LESS.";
+
+            const result = await generateContent(fullPrompt);
+
+            if (result.content) {
+                try {
+                    const jsonStart = result.content.indexOf('{');
+                    const jsonEnd = result.content.lastIndexOf('}') + 1;
+                    const jsonStr = result.content.slice(jsonStart, jsonEnd);
+                    const parsed = JSON.parse(jsonStr);
+
+                    if (parsed.meta_title && parsed.meta_description) {
+                        setFormData(prev => ({
+                            ...prev,
+                            meta_title: parsed.meta_title || prev.meta_title,
+                            meta_description: parsed.meta_description?.slice(0, 160) || prev.meta_description,
+                            meta_keywords: parsed.meta_keywords || parsed.keywords || prev.meta_keywords,
+                            image_alt: parsed.image_alt || prev.image_alt,
+                        }));
+                        toast.success("✨ SEO metadata generated!");
+                    } else {
+                        throw new Error("Incomplete result");
+                    }
+                } catch (e) {
+                    console.error("Failed to parse SEO response, using fallback", e);
+                    const fallback = await generateSEO({ title, description, content, type: 'startup' });
+                    if (fallback.meta_title) {
+                        setFormData(prev => ({
+                            ...prev,
+                            meta_title: fallback.meta_title || prev.meta_title,
+                            meta_description: fallback.meta_description?.slice(0, 160) || prev.meta_description,
+                            meta_keywords: fallback.meta_keywords || prev.meta_keywords,
+                            image_alt: fallback.image_alt || prev.image_alt,
+                        }));
+                        toast.success("✨ SEO metadata generated via fallback!");
+                    }
+                }
+            }
+        } catch (err: any) {
+            console.error("SEO Generation Error:", err);
+            toast.error(`SEO generation failed: ${err.message || String(err)}`);
+        } finally { setIsGenerating(false); }
     };
 
     return (
@@ -498,13 +558,13 @@ function NewStartupForm() {
                                     </Select>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Location Hub</Label>
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">City</Label>
                                     <Select
                                         value={formData.city}
                                         onValueChange={(v) => setFormData({ ...formData, city: v })}
                                     >
                                         <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white">
-                                            <SelectValue placeholder="Select Hub" />
+                                            <SelectValue placeholder="Select City" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {hubs.map((hub) => (
@@ -958,35 +1018,58 @@ function NewStartupForm() {
 
 
 
-                    {/* SEO Preview Card */}
+                    {/* SEO Settings Card */}
                     <motion.div
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.25 }}
                         className="admin-surface-compact overflow-hidden border border-border/40 shadow-sm"
                     >
-                        <div className="p-4 border-b border-border/40 bg-secondary/10 flex items-center gap-2">
-                            <Eye className="h-4 w-4 text-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Search Engine Optimization</span>
+                        <div className="p-4 border-b border-border/40 bg-secondary/10 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Eye className="h-4 w-4 text-primary" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">SEO Settings</span>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleGenerateSEO}
+                                disabled={isGenerating}
+                                className="h-7 px-3 text-[10px] font-bold text-primary hover:bg-primary/5 rounded-lg"
+                            >
+                                {isGenerating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                                Auto-Fill
+                            </Button>
                         </div>
-                        <div className="p-6 space-y-4 text-[11px]">
+                        <div className="p-5 space-y-4 text-[11px]">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">SEO Title</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Meta Title</Label>
                                 <Input
                                     value={formData.meta_title}
                                     onChange={(e) => setFormData({ ...formData, meta_title: e.target.value })}
-                                    placeholder="Search engine title..."
+                                    placeholder="SEO-optimized title (max 60 chars)"
                                     className="h-9 px-3 rounded-lg border-zinc-200 bg-white"
                                 />
+                                <div className="flex justify-end">
+                                    <span className={cn("text-[9px] font-bold", formData.meta_title.length > 60 ? "text-rose-500" : "text-zinc-300")}>
+                                        {formData.meta_title.length}/60
+                                    </span>
+                                </div>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">SEO Description</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Meta Description</Label>
                                 <Textarea
                                     value={formData.meta_description}
                                     onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
-                                    placeholder="Search engine snippet..."
+                                    placeholder="SEO-optimized description (max 160 chars)"
                                     className="min-h-[72px] px-3 py-2 rounded-lg border-zinc-200 bg-white resize-none"
                                 />
+                                <div className="flex justify-end">
+                                    <span className={cn("text-[9px] font-bold", formData.meta_description.length > 160 ? "text-rose-500" : "text-zinc-300")}>
+                                        {formData.meta_description.length}/160
+                                    </span>
+                                </div>
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Meta Keywords</Label>
@@ -994,6 +1077,15 @@ function NewStartupForm() {
                                     value={formData.meta_keywords}
                                     onChange={(e) => setFormData({ ...formData, meta_keywords: e.target.value })}
                                     placeholder="startup, fintech, india..."
+                                    className="h-9 px-3 rounded-lg border-zinc-200 bg-white"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Image Alt Text</Label>
+                                <Input
+                                    value={formData.image_alt}
+                                    onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
+                                    placeholder="Descriptive alt text for logo/image"
                                     className="h-9 px-3 rounded-lg border-zinc-200 bg-white"
                                 />
                             </div>

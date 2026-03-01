@@ -37,10 +37,17 @@ export default function MediaLibraryPage() {
         toast.success("URL copied to clipboard");
     };
 
-    const filteredMedia = mediaItems.filter(item =>
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.alt_text && item.alt_text.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredMedia = (mediaItems || []).filter(item =>
+        (item?.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (item?.alt_text?.toLowerCase() || "").includes(searchQuery.toLowerCase())
     );
+
+    const groupedMedia = filteredMedia.reduce((acc, item) => {
+        const folder = item.folder || 'root';
+        if (!acc[folder]) acc[folder] = [];
+        acc[folder].push(item);
+        return acc;
+    }, {} as Record<string, any[]>);
 
     const getFileIcon = (fileType: string) => {
         if (!fileType) return <ImageIcon className="text-zinc-400" size={24} />;
@@ -98,70 +105,87 @@ export default function MediaLibraryPage() {
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                        <AnimatePresence>
-                            {filteredMedia.map((item, i) => {
-                                const fullUrl = item.url ? (item.url.startsWith("http") ? item.url : `${API_BASE_URL.replace("/api", "")}${item.url}`) : "";
-                                const isImage = !item.file_type || item.file_type.includes("image");
+                    <div className="space-y-6">
+                        {(Object.entries(groupedMedia) as [string, any[]][]).map(([folder, items]) => (
+                            <div key={folder} className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm overflow-hidden">
+                                <div className="bg-zinc-50/80 border-b border-zinc-200/60 px-5 py-3.5 flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-lg bg-indigo-100/50 flex items-center justify-center border border-indigo-100/50 text-indigo-600 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" /></svg>
+                                    </div>
+                                    <h2 className="text-sm font-bold text-zinc-800 tracking-tight">
+                                        {folder === 'root' ? 'Root Directory' : '/' + folder}
+                                    </h2>
+                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-auto bg-white px-2.5 py-1 rounded-full border border-zinc-200 shadow-sm">
+                                        {items.length} files
+                                    </span>
+                                </div>
+                                <div className="p-5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                    <AnimatePresence>
+                                        {items.map((item, i) => {
+                                            const fullUrl = item.url ? (item.url.startsWith("http") ? item.url : `${API_BASE_URL.replace("/api", "")}${item.url}`) : "";
+                                            const isImage = !item.file_type && item.type === "image" || (item.file_type && item.file_type.includes("image"));
 
-                                return (
-                                    <motion.div
-                                        key={item.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: i * 0.05 }}
-                                        className="group relative bg-white border border-zinc-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:border-indigo-200 transition-all duration-300"
-                                    >
-                                        {/* Thumbnail Area */}
-                                        <div className="aspect-square bg-zinc-100 flex items-center justify-center overflow-hidden relative border-b border-zinc-100">
-                                            {isImage && fullUrl ? (
-                                                <img
-                                                    src={fullUrl}
-                                                    alt={item.alt_text || item.title}
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                    loading="lazy"
-                                                />
-                                            ) : (
-                                                getFileIcon(item.file_type)
-                                            )}
-
-                                            {/* Hover Actions */}
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
-                                                <Button
-                                                    size="icon"
-                                                    variant="secondary"
-                                                    className="h-8 w-8 rounded-full bg-white/90 hover:bg-white text-zinc-900 shadow-sm"
-                                                    onClick={() => handleCopyUrl(item.url)}
-                                                    title="Copy URL"
+                                            return (
+                                                <motion.div
+                                                    key={item.id}
+                                                    initial={{ opacity: 0, scale: 0.95 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    transition={{ delay: i * 0.03 }}
+                                                    className="group relative bg-white border border-zinc-200/60 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-indigo-200 transition-all duration-300"
                                                 >
-                                                    <Copy size={14} />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    variant="destructive"
-                                                    className="h-8 w-8 rounded-full shadow-sm"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </Button>
-                                            </div>
-                                        </div>
+                                                    {/* Thumbnail Area */}
+                                                    <div className="aspect-square bg-zinc-100/80 flex items-center justify-center overflow-hidden relative border-b border-zinc-100">
+                                                        {isImage && fullUrl ? (
+                                                            <img
+                                                                src={fullUrl}
+                                                                alt={item.alt_text || item.title}
+                                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                                                loading="lazy"
+                                                            />
+                                                        ) : (
+                                                            getFileIcon(item.file_type || item.type)
+                                                        )}
 
-                                        {/* Meta Info */}
-                                        <div className="p-3">
-                                            <h3 className="text-xs font-semibold text-zinc-900 truncate" title={item.title}>
-                                                {item.title}
-                                            </h3>
-                                            <div className="flex items-center justify-between mt-1.5">
-                                                <span className="text-[10px] uppercase font-black tracking-wider text-zinc-400">
-                                                    {item.file_type ? item.file_type.split('/')[1] : 'IMG'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
-                        </AnimatePresence>
+                                                        {/* Hover Actions */}
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
+                                                            <Button
+                                                                size="icon"
+                                                                variant="secondary"
+                                                                className="h-8 w-8 rounded-full bg-white/95 hover:bg-white text-zinc-900 shadow-sm hover:scale-105 transition-transform"
+                                                                onClick={() => handleCopyUrl(item.url)}
+                                                                title="Copy URL"
+                                                            >
+                                                                <Copy size={14} />
+                                                            </Button>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="destructive"
+                                                                className="h-8 w-8 rounded-full shadow-sm hover:scale-105 transition-transform"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Meta Info */}
+                                                    <div className="p-3">
+                                                        <h3 className="text-xs font-semibold text-zinc-900 truncate" title={item.title}>
+                                                            {item.title}
+                                                        </h3>
+                                                        <div className="flex items-center justify-between mt-1.5">
+                                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-500 uppercase font-black tracking-wider">
+                                                                {(item.file_type || item.type) ? (item.file_type || item.type).split('/')[1] || item.type : 'FILE'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </AnimatePresence>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>

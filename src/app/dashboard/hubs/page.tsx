@@ -200,7 +200,7 @@ export default function CitiesPage() {
                                 <div className="absolute bottom-3 left-3 right-3 text-white">
                                     <h3 className="text-sm font-bold tracking-tight mb-0.5">{city.name}</h3>
                                     <p className="text-[10px] text-white/80 line-clamp-1">
-                                        {city.description || "Hub"}
+                                        {city.description || "City"}
                                     </p>
                                 </div>
                             </div>

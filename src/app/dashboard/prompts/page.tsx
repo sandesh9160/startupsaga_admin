@@ -95,6 +95,12 @@ const DEFAULT_PROMPTS = [
         category: "desc_gen",
         prompt_text: 'Write a professional alt text for a cover image representing the startup ecosystem of {name}. Focus on the city skyline or innovation vibe. Max 15 words.',
         is_active: true
+    },
+    {
+        name: "Startup SEO Generator",
+        category: "seo_gen",
+        prompt_text: 'Generate SEO metadata for a startup named "{title}".\nDescription: {description}\nContent excerpt: {content}\n\nReturn strictly a JSON object with keys: "meta_title", "meta_description", "meta_keywords", "image_alt". The image_alt should be a concise, descriptive alt text (max 15 words) for the startup\'s logo/cover image.',
+        is_active: true
     }
 ];
 
@@ -105,7 +111,8 @@ const PROMPT_USAGE_MAP: Record<string, { file: string, function: string }> = {
     "Slug Generator": { file: "admin/src/app/dashboard/stories/new/page.tsx", function: "handleGenerateSlug" },
     "City SEO Generator": { file: "admin/src/lib/city-prompts.ts", function: "CitySEOGenerator" },
     "City Description": { file: "admin/src/lib/city-prompts.ts", function: "CityDescription" },
-    "City Alt Text": { file: "admin/src/lib/city-prompts.ts", function: "CityAltText" }
+    "City Alt Text": { file: "admin/src/lib/city-prompts.ts", function: "CityAltText" },
+    "Startup SEO Generator": { file: "admin/src/app/dashboard/startups/new/page.tsx", function: "handleGenerateSEO" }
 };
 
 export default function PromptsPage() {
@@ -121,11 +128,12 @@ export default function PromptsPage() {
     const loadPrompts = async () => {
         try {
             setIsLoading(true);
-            const data = await getPrompts();
-            setPrompts(data);
-            if (data.length > 0 && !selectedPrompt) {
-                setSelectedPrompt(data[0]);
-                setEditForm({ ...data[0] });
+            const rawData = await getPrompts();
+            const cleanData = (rawData || []).filter(Boolean);
+            setPrompts(cleanData);
+            if (cleanData.length > 0 && !selectedPrompt) {
+                setSelectedPrompt(cleanData[0]);
+                setEditForm({ ...cleanData[0] });
             }
         } catch (error) {
             console.error("Failed to load prompts:", error);

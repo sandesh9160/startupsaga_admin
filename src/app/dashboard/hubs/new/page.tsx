@@ -89,7 +89,21 @@ export default function CityFormPage() {
     const loadCity = async () => {
         try {
             const city = await getCityBySlug(slug);
-            setFormData(city);
+            // Sanitize null values to empty strings to keep inputs controlled
+            setFormData({
+                name: city.name || "",
+                slug: city.slug || "",
+                description: city.description || "",
+                startupCount: city.startupCount || 0,
+                unicornCount: city.unicornCount || 0,
+                image: city.image || "",
+                tier: city.tier || "3",
+                is_featured: city.is_featured || false,
+                status: city.status || "draft",
+                meta_title: city.meta_title || "",
+                meta_description: city.meta_description || "",
+                image_alt: city.image_alt || "",
+            });
             fetchAPI("/media/").then(data => setMediaItems(Array.isArray(data) ? data : [])).catch(e => console.error(e));
         } catch (err) {
             toast.error("Failed to load city data");
@@ -237,11 +251,11 @@ export default function CityFormPage() {
                         </div>
                         <div>
                             <div className="flex items-center gap-3 mb-1">
-                                <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-full">Hub Control v3.1</span>
-                                <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 text-zinc-400 rounded-lg">{isEditing ? "Entity Editor" : "New Node"}</Badge>
+                                <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-full">City Editor</span>
+                                <Badge variant="outline" className="text-[9px] font-bold border-zinc-200 text-zinc-400 rounded-lg">{isEditing ? "Editing" : "Creating"}</Badge>
                             </div>
                             <h1 className="text-2xl font-black text-zinc-900 tracking-tight">
-                                {isEditing ? formData.name : "Establish New Hub"}
+                                {isEditing ? formData.name : "New City"}
                             </h1>
                         </div>
                     </div>
@@ -261,7 +275,7 @@ export default function CityFormPage() {
                                 onClick={() => window.open(`${process.env.NEXT_PUBLIC_SITE_URL}/hubs/${formData.slug}`, '_blank')}
                                 className="bg-white border border-zinc-200 h-12 px-6 rounded-2xl text-[11px] font-black uppercase tracking-widest text-zinc-600 hover:text-zinc-900 shadow-sm transition-all hover:border-zinc-300 flex items-center gap-2"
                             >
-                                <ExternalLink size={14} className="h-3.5 w-3.5" /> Preview Hub
+                                <ExternalLink size={14} className="h-3.5 w-3.5" /> Preview City
                             </Button>
                         )}
 
@@ -275,7 +289,7 @@ export default function CityFormPage() {
                             ) : (
                                 <Save className="h-4 w-4" />
                             )}
-                            {isSaving ? "Synchronizing..." : "Commit Hub Data"}
+                            {isSaving ? "Saving..." : isEditing ? "Update" : "Save"}
                         </Button>
                     </div>
                 </div>
@@ -458,7 +472,7 @@ export default function CityFormPage() {
                                         <Label className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 ml-1">Select From Library</Label>
                                         <select
                                             className="w-full h-10 rounded-xl border border-zinc-100 bg-white px-3 text-xs font-bold text-zinc-700 outline-none focus:ring-2 focus:ring-indigo-500/10"
-                                            value={formData.image}
+                                            value={formData.image || ""}
                                             onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                                         >
                                             <option value="">— Choose an asset —</option>
@@ -555,7 +569,7 @@ export default function CityFormPage() {
                                         onChange={(e) => setFormData({ ...formData, image_alt: e.target.value })}
                                         className="min-h-[60px] rounded-xl bg-white border-zinc-200 focus:ring-2 focus:ring-primary/10 text-xs font-medium resize-none"
                                     />
-                                    <p className="text-[9px] text-zinc-400 font-medium">Use AI to generate SEO-optimized alt text for this hub's image.</p>
+                                    <p className="text-[9px] text-zinc-400 font-medium">Use AI to generate SEO-optimized alt text for this city's image.</p>
                                 </CardContent>
                             </Card>
 
