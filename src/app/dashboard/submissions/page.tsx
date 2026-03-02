@@ -127,34 +127,34 @@ export default function SubmissionsPage() {
     const filteredSubmissions = submissions;
 
     return (
-        <div className="min-h-screen bg-white text-zinc-900 font-sans pb-10">
+        <div className="min-h-screen bg-white text-zinc-900 font-sans pb-8">
             <div className="max-w-[1400px] mx-auto p-4 lg:p-8 space-y-8 flex flex-col min-h-[85vh]">
 
                 {/* --- HEADER --- */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-5 rounded-2xl bg-zinc-50 border border-zinc-100 shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <div className="h-11 w-11 rounded-xl bg-purple-600 flex items-center justify-center shadow-md shadow-purple-200">
-                            <Inbox className="h-5 w-5 text-white" />
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-2 rounded-xl bg-zinc-50 border border-zinc-100 shadow-sm">
+                    <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-lg bg-purple-600 flex items-center justify-center shadow-sm">
+                            <Inbox className="h-4 w-4 text-white" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Queue</p>
-                            <h1 className="text-xl font-bold tracking-tight text-zinc-900 capitalize">{statusFilter} Submissions</h1>
+                            <p className="text-[9px] font-medium text-zinc-400 uppercase tracking-wider mb-0">Queue</p>
+                            <h1 className="text-base font-medium tracking-tight text-zinc-900 capitalize">{statusFilter} Submissions</h1>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         {pendingCount > 0 && (
-                            <div className="hidden sm:flex flex-col items-end mr-2">
-                                <span className="text-[10px] font-medium text-amber-500 uppercase tracking-wider">Pending</span>
-                                <span className="text-base font-bold text-zinc-900 tabular-nums">{pendingCount} New</span>
+                            <div className="hidden sm:flex flex-col items-end mr-1">
+                                <span className="text-[8px] font-medium text-amber-500 uppercase tracking-wider leading-none">Pending</span>
+                                <span className="text-xs font-medium text-zinc-900 tabular-nums">{pendingCount} New</span>
                             </div>
                         )}
                         <button
                             onClick={() => loadSubmissions(true)}
                             disabled={isLoading || isRefreshing}
-                            className="h-9 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all active:scale-95 shadow-sm shadow-purple-200 flex items-center gap-1.5 disabled:opacity-50"
+                            className="h-8 px-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-medium transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-50"
                         >
-                            <Clock size={13} className={cn(isRefreshing && "animate-spin")} />
+                            <Clock size={12} className={cn(isRefreshing && "animate-spin")} />
                             {isRefreshing ? "Refreshing..." : "Refresh"}
                         </button>
                     </div>
@@ -191,18 +191,18 @@ export default function SubmissionsPage() {
                 </div>
 
                 {/* CONTENT */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-10">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
                     {isLoading && submissions.length === 0 ? (
-                        [...Array(4)].map((_, i) => (
-                            <div key={i} className="h-[450px] rounded-[2.5rem] bg-white border border-slate-100 shadow-sm animate-pulse" />
+                        [...Array(16)].map((_, i) => (
+                            <div key={i} className="h-56 rounded-lg bg-white border border-slate-100 shadow-sm animate-pulse" />
                         ))
                     ) : filteredSubmissions.length === 0 ? (
-                        <div className="col-span-full flex flex-col items-center justify-center p-32 text-center rounded-[3rem] bg-zinc-50 border border-dashed border-zinc-200 shadow-sm">
-                            <Inbox size={64} className="text-zinc-200 mb-6" />
-                            <h3 className="text-2xl font-bold text-zinc-900 mb-2">
+                        <div className="col-span-full flex flex-col items-center justify-center p-12 text-center rounded-xl bg-zinc-50 border border-dashed border-zinc-200">
+                            <Inbox size={32} className="text-zinc-200 mb-2" />
+                            <h3 className="text-sm font-normal text-zinc-900 mb-0.5">
                                 Empty Queue
                             </h3>
-                            <p className="text-zinc-500 max-w-xs">No startup applications match your current filters.</p>
+                            <p className="text-zinc-500 text-[11px] max-w-xs font-normal">No applications match filters.</p>
                         </div>
                     ) : (
                         <AnimatePresence mode="popLayout">
@@ -210,51 +210,45 @@ export default function SubmissionsPage() {
                                 <motion.div
                                     key={submission.id}
                                     layout
-                                    initial={{ opacity: 0, scale: 0.98 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    className="group/card relative flex flex-col bg-white rounded-[2.5rem] border border-zinc-200/60 shadow-md hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-700 overflow-hidden"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0, scale: 0.98 }}
+                                    className="group/card relative flex flex-col bg-white rounded-lg border border-zinc-100 shadow-sm hover:border-zinc-300 transition-all duration-150 overflow-hidden"
                                 >
-                                    {/* Substantial Card Header - Much taller */}
-                                    <div className="relative h-64 bg-zinc-100 flex items-center justify-center overflow-hidden">
+                                    {/* Ultra Mini Header */}
+                                    <div className="relative h-20 bg-zinc-50 flex items-center justify-center overflow-hidden">
                                         {submission.thumbnail ? (
                                             <img
                                                 src={getSafeImageSrc(submission.thumbnail)}
                                                 alt={submission.startup_name}
-                                                className="h-full w-full object-cover group-hover/card:scale-105 transition-transform duration-[1500ms]"
+                                                className="h-full w-full object-cover group-hover/card:scale-105 transition-transform duration-300"
                                             />
                                         ) : (
                                             <div className="h-full w-full flex items-center justify-center bg-zinc-50">
-                                                <Building2 size={80} className="text-zinc-100" />
+                                                <Building2 size={24} className="text-zinc-200" />
                                             </div>
                                         )}
 
-                                        {/* Premium Overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-90" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
-                                        {/* Status & Identifiers */}
-                                        <div className="absolute top-6 left-6 flex flex-col gap-3">
+                                        {/* Status - Floating micro */}
+                                        <div className="absolute top-1.5 left-1.5 flex flex-col gap-0.5">
                                             <Badge className={cn(
-                                                "w-fit backdrop-blur-md border-none font-black text-[11px] uppercase tracking-[0.2em] px-4 py-1.5 shadow-2xl",
+                                                "w-fit border-none font-normal text-[7px] uppercase tracking-wider px-1 py-0 shadow-sm",
                                                 submission.status === 'pending'
-                                                    ? "bg-orange-500 text-white animate-pulse"
+                                                    ? "bg-amber-500 text-white"
                                                     : submission.status === 'approved'
                                                         ? "bg-emerald-500 text-white"
                                                         : "bg-rose-500 text-white"
                                             )}>
                                                 {submission.status}
                                             </Badge>
-                                            {submission.category && (
-                                                <div className="w-fit px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-widest">
-                                                    {submission.category}
-                                                </div>
-                                            )}
                                         </div>
 
-                                        {/* Floating Actions/Logo */}
-                                        <div className="absolute top-6 right-6">
+                                        {/* Logo - Floating smaller */}
+                                        <div className="absolute top-1.5 right-1.5">
                                             {submission.logo ? (
-                                                <div className="h-16 w-16 rounded-[1.25rem] bg-white p-2.5 shadow-2xl border border-white/50 group-hover/card:rotate-3 transition-all duration-500">
+                                                <div className="h-6 w-6 rounded bg-white p-0.5 shadow-sm border border-white/50">
                                                     <img
                                                         src={getSafeImageSrc(submission.logo)}
                                                         alt=""
@@ -262,126 +256,84 @@ export default function SubmissionsPage() {
                                                     />
                                                 </div>
                                             ) : (
-                                                <div className="h-16 w-16 rounded-[1.25rem] bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
-                                                    <Sparkles className="text-white h-7 w-7" />
+                                                <div className="h-6 w-6 rounded bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
+                                                    <Sparkles className="text-white h-2.5 w-2.5" />
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* Main Identity Overlay */}
-                                        <div className="absolute bottom-8 left-8 right-8 text-white">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <h3 className="text-3xl font-black tracking-tighter drop-shadow-lg line-clamp-1">
-                                                    {submission.startup_name}
-                                                </h3>
-                                                {submission.og_image && <div className="h-6 w-6 rounded-full bg-indigo-500 flex items-center justify-center shadow-lg"><Globe size={12} className="text-white" /></div>}
-                                            </div>
-
-                                            <div className="flex flex-wrap items-center gap-6">
-                                                <div className="flex items-center gap-2 text-zinc-300">
-                                                    <div className="h-7 w-7 rounded-lg bg-white/10 flex items-center justify-center">
-                                                        <Mail size={14} />
-                                                    </div>
-                                                    <span className="text-sm font-semibold tracking-tight">{submission.email}</span>
-                                                </div>
-                                                {submission.city && (
-                                                    <div className="flex items-center gap-2 text-zinc-300">
-                                                        <div className="h-7 w-7 rounded-lg bg-white/10 flex items-center justify-center">
-                                                            <MapPin size={14} />
-                                                        </div>
-                                                        <span className="text-sm font-semibold tracking-tight">{submission.city}</span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                        {/* Minimal Identity Info on Header */}
+                                        <div className="absolute bottom-1.5 left-1.5 right-1.5 text-white">
+                                            <h3 className="text-[10px] font-normal tracking-tight line-clamp-1 drop-shadow-sm">
+                                                {submission.startup_name}
+                                            </h3>
                                         </div>
                                     </div>
 
-                                    {/* Comprehensive Action Layout */}
-                                    <div className="p-8 bg-white flex flex-col gap-8">
-                                        <div className="flex items-center justify-between px-2">
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-2xl bg-zinc-50 flex items-center justify-center border border-zinc-100">
-                                                    <User className="h-6 w-6 text-zinc-400" />
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-[10px] uppercase font-black text-zinc-400 tracking-[0.15em]">Founder Identity</span>
-                                                    <span className="text-lg font-bold text-zinc-900 leading-tight">{submission.founder_name || "Anonymous Founder"}</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-4 text-right">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[10px] uppercase font-black text-zinc-400 tracking-[0.15em]">Cycle Phase</span>
-                                                    <div className="flex items-center gap-2 justify-end">
-                                                        <Calendar size={14} className="text-zinc-400" />
-                                                        <span className="text-sm font-bold text-zinc-700">
-                                                            {new Date(submission.created_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                    {/* Compact Action Layout */}
+                                    <div className="p-1.5 flex flex-col gap-1.5">
+                                        <div className="flex items-center justify-between gap-1 overflow-hidden">
+                                            <span className="text-[9px] font-normal text-zinc-600 truncate">{submission.founder_name || "Anonymous"}</span>
+                                            <span className="text-[8px] font-normal text-zinc-400 shrink-0">
+                                                {new Date(submission.created_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
+                                            </span>
                                         </div>
 
-                                        {/* Large, Neat Interactive Buttons */}
-                                        <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-zinc-50">
-                                            <div className="flex gap-3 flex-1 min-w-[300px]">
-                                                {submission.status === 'pending' && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => handleStatusUpdate(submission.id, 'approved')}
-                                                            className="flex-1 h-16 rounded-[1.25rem] bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/btn"
-                                                        >
-                                                            <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                                                                <CheckCircle2 size={20} strokeWidth={3} />
-                                                            </div>
-                                                            <span className="text-[11px] font-black uppercase tracking-widest">Approve</span>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleStatusUpdate(submission.id, 'rejected')}
-                                                            className="flex-1 h-16 rounded-[1.25rem] bg-zinc-900 hover:bg-rose-600 text-white shadow-xl shadow-zinc-900/10 flex items-center justify-center gap-3 transition-all active:scale-95 group/btn"
-                                                        >
-                                                            <div className="h-8 w-8 rounded-lg bg-white/10 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                                                                <XCircle size={20} strokeWidth={3} />
-                                                            </div>
-                                                            <span className="text-[11px] font-black uppercase tracking-widest">Dismiss</span>
-                                                        </button>
-                                                    </>
-                                                )}
+                                        {/* Metadata Row */}
+                                        <div className="flex items-center gap-1 min-h-[12px] overflow-hidden">
+                                            <span className="text-[8px] font-normal text-zinc-400 uppercase tracking-tighter truncate">
+                                                {submission.category || "No Category"}
+                                            </span>
+                                            <span className="text-zinc-200">|</span>
+                                            <span className="text-[8px] font-normal text-zinc-400 flex items-center gap-0.5 truncate">
+                                                <MapPin size={7} />
+                                                {submission.city || "Remote"}
+                                            </span>
+                                        </div>
 
-                                                {submission.status === 'approved' && (
+                                        {/* Ultra Compact Actions */}
+                                        <div className="flex items-center gap-1 pt-1.5 border-t border-zinc-50">
+                                            {submission.status === 'pending' ? (
+                                                <div className="flex gap-1 flex-1">
                                                     <button
-                                                        onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=startup`)}
-                                                        className="flex-1 h-16 rounded-[1.25rem] bg-purple-600 hover:bg-purple-700 text-white shadow-xl shadow-purple-500/20 flex items-center justify-center gap-4 transition-all active:scale-95 group/btn"
+                                                        onClick={() => handleStatusUpdate(submission.id, 'approved')}
+                                                        className="flex-1 h-6 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[8px] font-normal uppercase tracking-tight flex items-center justify-center gap-1 transition-all"
                                                     >
-                                                        <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                                                            <Building2 size={24} strokeWidth={2.5} />
-                                                        </div>
-                                                        <span className="text-xs font-black uppercase tracking-widest">Build Venture Profile</span>
+                                                        <CheckCircle2 size={10} />
+                                                        Verify
                                                     </button>
-                                                )}
-                                            </div>
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(submission.id, 'rejected')}
+                                                        className="h-6 w-6 rounded bg-zinc-50 hover:bg-rose-50 text-zinc-400 hover:text-rose-600 flex items-center justify-center transition-all border border-zinc-100"
+                                                        title="Dismiss"
+                                                    >
+                                                        <XCircle size={10} />
+                                                    </button>
+                                                </div>
+                                            ) : submission.status === 'approved' && (
+                                                <button
+                                                    onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=startup`)}
+                                                    className="flex-1 h-6 rounded bg-purple-600 hover:bg-purple-700 text-white text-[8px] font-normal uppercase tracking-tight flex items-center justify-center gap-1 transition-all"
+                                                >
+                                                    <Building2 size={10} />
+                                                    Base
+                                                </button>
+                                            )}
 
-                                            <div className="flex gap-3 ml-auto">
+                                            <div className="flex items-center gap-1">
                                                 <button
                                                     onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=submission`)}
-                                                    className="h-16 w-16 rounded-[1.25rem] bg-zinc-50 hover:bg-zinc-100 text-zinc-900 border border-zinc-200 flex items-center justify-center transition-all hover:-translate-y-1 shadow-sm"
+                                                    className="h-6 w-6 rounded bg-zinc-50 hover:bg-zinc-100 text-zinc-500 border border-zinc-100 flex items-center justify-center transition-all"
                                                     title="Refine Data"
                                                 >
-                                                    <Edit size={22} />
+                                                    <Edit size={10} />
                                                 </button>
                                                 <button
                                                     onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=story`)}
-                                                    className="h-16 w-16 rounded-[1.25rem] bg-zinc-50 hover:bg-indigo-50 text-indigo-600 border border-zinc-200 flex items-center justify-center transition-all hover:-translate-y-1 shadow-sm"
+                                                    className="h-6 w-6 rounded bg-zinc-50 hover:bg-indigo-50 text-indigo-600 border border-zinc-100 flex items-center justify-center transition-all"
                                                     title="Write Feature"
                                                 >
-                                                    <FileText size={22} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(submission.id)}
-                                                    className="h-16 w-16 rounded-[1.25rem] bg-white hover:bg-rose-50 text-zinc-300 hover:text-rose-600 border border-zinc-200 flex items-center justify-center transition-all hover:-translate-y-1"
-                                                    title="Remove"
-                                                >
-                                                    <Trash2 size={22} />
+                                                    <FileText size={10} />
                                                 </button>
                                             </div>
                                         </div>

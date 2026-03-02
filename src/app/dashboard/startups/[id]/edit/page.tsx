@@ -369,7 +369,7 @@ function StartupEditForm() {
                         }));
                         toast.success("✨ SEO metadata generated!");
                     } else {
-                        throw new Error("Incomplete result");
+                        throw new Error("Incomplete result from main prompt");
                     }
                 } catch (e) {
                     console.error("Failed to parse SEO response, using fallback", e);
@@ -383,11 +383,19 @@ function StartupEditForm() {
                             image_alt: fallback.image_alt || prev.image_alt,
                         }));
                         toast.success("✨ SEO metadata generated via fallback!");
+                    } else {
+                        console.error("Fallback SEO error:", fallback.error);
+                        toast.error(`SEO fallback failed: ${fallback.error || "Unknown error"}`);
                     }
                 }
+            } else if (result.error) {
+                console.error("❌ AI SEO Error:", result.error);
+                toast.error(`SEO AI Error: ${result.error}`);
+            } else {
+                toast.error("AI service did not return content.");
             }
         } catch (err: any) {
-            console.error("SEO Generation Error:", err);
+            console.error("❌ Critical SEO Generation Error:", err);
             toast.error(`SEO generation failed: ${err.message || String(err)}`);
         } finally { setIsGenerating(false); }
     };

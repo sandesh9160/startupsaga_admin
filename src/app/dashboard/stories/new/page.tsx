@@ -18,6 +18,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+
 } from "@/components/ui/select";
 import {
     ChevronLeft,
@@ -460,34 +461,33 @@ function NewStoryPageContent() {
             return;
         }
         setIsGenerating(true);
-        console.log("🤖 Starting AI content generation for:", formData.title);
+        console.log("Starting AI content generation for:", formData.title);
 
         try {
             let template = await getPromptTemplate("Story Content Generator");
             const prompt = fillTemplate(template, { title: formData.title });
 
-            console.log("📝 Sending prompt to AI:", prompt.substring(0, 100) + "...");
+            console.log("Sending prompt to AI:", prompt.substring(0, 100) + "...");
 
             const result = await generateContent(prompt);
-            console.log("✅ AI Response received:", result);
+            console.log("AI Response received:", result);
 
-            // Check for error response from backend
             if (result.error) {
-                console.error("❌ AI Error:", result.error);
+                console.error("AI Error Details:", result.error);
                 toast.error(`AI Error: ${result.error}`);
                 return;
             }
 
             if (result.content) {
-                console.log("✅ Content generated, length:", result.content.length);
+                console.log("Content generated, length:", result.content.length);
                 setFormData(prev => ({ ...prev, content: result.content }));
-                toast.success("✨ AI-generated content ready!");
+                toast.success("AI-generated content ready!");
             } else {
-                console.warn("⚠️ No content in response:", result);
-                toast.error("AI returned empty response. Please try again.");
+                console.warn("AI returned empty result without error key");
+                toast.error("AI returned an empty response. Please try again.");
             }
         } catch (err: any) {
-            console.error("❌ Content Generation Error:", err);
+            console.error("ontent Generation Error:", err);
             const errorMessage = err.message || String(err);
             toast.error(`Failed to generate content: ${errorMessage}`);
         } finally {
@@ -558,8 +558,15 @@ function NewStoryPageContent() {
                             setStartupData(prev => ({ ...prev, ...seoData, image_alt: fallback.image_alt || prev.image_alt }));
                         }
                         toast.success("✨ SEO metadata generated via fallback!");
+                    } else {
+                        throw new Error(fallback.error || "Fallback generation failed");
                     }
                 }
+            } else if (result.error) {
+                console.error("❌ AI SEO Error:", result.error);
+                toast.error(`SEO Error: ${result.error}`);
+            } else {
+                toast.error("AI failed to return any SEO suggestions.");
             }
         } catch (err: any) {
             console.error("❌ SEO Generation Error:", err);
@@ -585,7 +592,7 @@ function NewStoryPageContent() {
             console.log("✅ Alt Text Response received:", result);
 
             if (result.error) {
-                console.error("❌ Alt Text Error:", result.error);
+                console.error("❌ AI Alt Text Error:", result.error);
                 toast.error(`AI Error: ${result.error}`);
             } else if (result.content) {
                 let altText = result.content.replace(/^["']|["']$/g, '');
@@ -594,7 +601,7 @@ function NewStoryPageContent() {
                 toast.success("✨ Alt text generated!");
             } else {
                 console.warn("⚠️ No content in alt text response");
-                toast.error("Failed to generate alt text.");
+                toast.error("AI failed to generate alt text.");
             }
         } catch (err: any) {
             console.error("❌ Alt Text Generation Error:", err);
@@ -1877,9 +1884,9 @@ function NewStoryPageContent() {
                                             <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm space-y-2">
                                                 <div className="flex items-center justify-between">
                                                     <Label className="text-[9px] font-black text-blue-300 uppercase tracking-widest block">Quick Pitch</Label>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
                                                         className="h-5 px-1.5 text-[7px] font-black text-blue-400 hover:bg-blue-50 uppercase tracking-widest"
                                                         onClick={() => {
                                                             setStartupData(prev => ({ ...prev, tagline: submissionDetails.description }));

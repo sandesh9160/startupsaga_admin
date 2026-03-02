@@ -155,9 +155,12 @@ export default function NewsletterPage() {
             }
             toast.success("Newsletter settings updated successfully");
             loadTemplates();
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            toast.error("Failed to save template");
+            const errorMessage = err.message?.includes("API Error")
+                ? err.message.split(" - ")[1]?.slice(0, 100)
+                : "Check your network connection";
+            toast.error(`Save Failed: ${errorMessage || "Internal Server Error"}`);
         } finally {
             setIsSavingTemplate(false);
         }
@@ -397,7 +400,95 @@ export default function NewsletterPage() {
                         ) : (
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                 {/* -- CONFIGURATOR -- */}
-                                <div className="lg:col-span-5 space-y-3">
+                                <div className="lg:col-span-5 space-y-4">
+                                    {/* Template Selector */}
+                                    <div className="bg-white p-3 rounded-xl border border-zinc-200 shadow-sm">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-2 block">
+                                            Select Template
+                                        </label>
+                                        <div className="grid grid-cols-1 gap-1.5">
+                                            {templates.map((t) => (
+                                                <button
+                                                    key={t.id}
+                                                    onClick={async () => {
+                                                        setIsLoadingTemplates(true);
+                                                        try {
+                                                            const detail = await newsletterTemplatesApi.get(t.id);
+                                                            setActiveTemplate(detail);
+                                                        } finally {
+                                                            setIsLoadingTemplates(false);
+                                                        }
+                                                    }}
+                                                    className={cn(
+                                                        "flex items-center justify-between p-2.5 rounded-lg border text-left transition-all",
+                                                        activeTemplate?.id === t.id
+                                                            ? "bg-purple-50 border-purple-200 ring-1 ring-purple-100"
+                                                            : "bg-white border-zinc-100 hover:border-zinc-200"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={cn(
+                                                            "h-2 w-2 rounded-full",
+                                                            activeTemplate?.id === t.id ? "bg-purple-600" : "bg-zinc-200"
+                                                        )} />
+                                                        <span className={cn(
+                                                            "text-[11px] font-bold",
+                                                            activeTemplate?.id === t.id ? "text-purple-900" : "text-zinc-600"
+                                                        )}>{t.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {t.is_active && (
+                                                            <Badge className="bg-emerald-500/10 text-emerald-600 border-none text-[8px] h-4 px-1.5 font-black uppercase">
+                                                                Active
+                                                            </Badge>
+                                                        )}
+                                                        <button
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                if (t.is_active) {
+                                                                    toast.error("Cannot delete active template");
+                                                                    return;
+                                                                }
+                                                                if (confirm("Delete this template?")) {
+                                                                    try {
+                                                                        await fetch(`${API_BASE_URL}/newsletter/templates/${t.id}/delete/`, { method: "DELETE" });
+                                                                        toast.success("Template deleted");
+                                                                        loadTemplates();
+                                                                    } catch (err) {
+                                                                        toast.error("Delete failed");
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="p-1 rounded hover:bg-rose-50 text-zinc-300 hover:text-rose-500 transition-colors"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setActiveTemplate({
+                                                        name: "New Template",
+                                                        subject_format: "StartupSaga: {first_story_title}",
+                                                        header_title: "StartupSaga",
+                                                        header_subtitle: "Subtitle here",
+                                                        body_intro: "Section Title",
+                                                        body_text: "<p>Start writing...</p>",
+                                                        footer_text: "© {year} StartupSaga. All rights reserved.",
+                                                        accent_color: "#000000",
+                                                        is_active: false,
+                                                        font_family: "'Inter', sans-serif"
+                                                    });
+                                                }}
+                                                className="h-8 border-dashed border-zinc-200 text-[10px] font-bold text-zinc-400 hover:text-zinc-600"
+                                            >
+                                                + Create New Template
+                                            </Button>
+                                        </div>
+                                    </div>
+
                                     <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm space-y-4">
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between gap-2 mb-2">
@@ -406,7 +497,7 @@ export default function NewsletterPage() {
                                                         <Palette className="h-4 w-4" />
                                                     </div>
                                                     <h3 className="text-[12px] font-black uppercase tracking-widest text-zinc-900">
-                                                        {previewMode === "weekly" ? "Weekly Design" : "Admin Design"}
+                                                        Design Customizer
                                                     </h3>
                                                 </div>
                                                 <Button
@@ -421,13 +512,45 @@ export default function NewsletterPage() {
                                                 </Button>
                                             </div>
                                             <p className="text-[10px] text-zinc-400 font-medium">
-                                                {previewMode === "weekly"
-                                                    ? "Customize the look and feel of your customer-facing newsletters."
-                                                    : "Customize how internal automation alerts appear in your inbox."}
+                                                Modifying <strong>{activeTemplate.name}</strong>. Changes will apply globally when marked as active.
                                             </p>
                                         </div>
 
                                         <div className="space-y-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+                                                    Template Name
+                                                </label>
+                                                <Input
+                                                    value={activeTemplate.name}
+                                                    onChange={(e) => setActiveTemplate({ ...activeTemplate, name: e.target.value })}
+                                                    className="h-8 text-[11px] font-bold"
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 border border-zinc-100">
+                                                <div>
+                                                    <p className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Active Status</p>
+                                                    <p className="text-[9px] text-zinc-500 font-medium">Use this template for all new mailings</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => setActiveTemplate({ ...activeTemplate, is_active: !activeTemplate.is_active })}
+                                                    className={cn(
+                                                        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                                                        activeTemplate.is_active ? "bg-purple-600" : "bg-zinc-200"
+                                                    )}
+                                                >
+                                                    <span
+                                                        className={cn(
+                                                            "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                                            activeTemplate.is_active ? "translate-x-4" : "translate-x-0"
+                                                        )}
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            <div className="h-px bg-zinc-100 my-2" />
+
                                             <div className="space-y-1.5">
                                                 <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                                                     <Palette className="h-2.5 w-2.5" /> Accent Color
@@ -557,8 +680,14 @@ export default function NewsletterPage() {
                                                         {previewMode === "weekly" ? "Section Title (Intro)" : "Alert Badge Text"}
                                                     </label>
                                                     <Input
-                                                        value={activeTemplate.body_intro}
-                                                        onChange={(e) => setActiveTemplate({ ...activeTemplate, body_intro: e.target.value })}
+                                                        value={previewMode === "weekly" ? activeTemplate.body_intro : (activeTemplate.admin_body_intro || "")}
+                                                        onChange={(e) => {
+                                                            if (previewMode === "weekly") {
+                                                                setActiveTemplate({ ...activeTemplate, body_intro: e.target.value })
+                                                            } else {
+                                                                setActiveTemplate({ ...activeTemplate, admin_body_intro: e.target.value })
+                                                            }
+                                                        }}
                                                         className="h-8 text-[11px] font-bold"
                                                     />
                                                 </div>
@@ -569,8 +698,14 @@ export default function NewsletterPage() {
                                                     </label>
                                                     <div className="min-h-[300px] max-h-[500px] border rounded-xl overflow-hidden border-zinc-200">
                                                         <RichTextEditor
-                                                            content={activeTemplate.body_text || ""}
-                                                            onChange={(html) => setActiveTemplate({ ...activeTemplate, body_text: html })}
+                                                            content={previewMode === "weekly" ? (activeTemplate.body_text || "") : (activeTemplate.admin_body_text || "")}
+                                                            onChange={(html) => {
+                                                                if (previewMode === "weekly") {
+                                                                    setActiveTemplate({ ...activeTemplate, body_text: html })
+                                                                } else {
+                                                                    setActiveTemplate({ ...activeTemplate, admin_body_text: html })
+                                                                }
+                                                            }}
                                                             placeholder={previewMode === "weekly" ? "Enter main newsletter content..." : "Enter admin notification message..."}
                                                         />
                                                     </div>
@@ -764,11 +899,11 @@ export default function NewsletterPage() {
                                                                 className="inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest"
                                                                 style={{ backgroundColor: `${activeTemplate.accent_color}15`, color: activeTemplate.accent_color }}
                                                             >
-                                                                {activeTemplate.body_intro || "Fresh Lead"}
+                                                                {activeTemplate.admin_body_intro || "Fresh Lead"}
                                                             </div>
                                                             <div
                                                                 className="text-xs font-medium text-zinc-400 prose prose-sm max-w-none text-center"
-                                                                dangerouslySetInnerHTML={{ __html: activeTemplate.body_text || "<p>A user has just subscribed to the newsletter:</p>" }}
+                                                                dangerouslySetInnerHTML={{ __html: activeTemplate.admin_body_text || "<p>A user has just subscribed to the newsletter:</p>" }}
                                                             />
                                                             <div className="text-lg font-black text-zinc-900 border-y border-zinc-50 py-4 my-2">
                                                                 new-subscriber@example.com

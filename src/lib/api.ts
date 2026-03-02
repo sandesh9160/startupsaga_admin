@@ -64,7 +64,7 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     }
 
     const res = await fetch(url, {
-      next: { revalidate: 1 }, // Ensure data is extremely fresh, but allow static check during build
+      cache: "no-store", // Completely disable caching for admin data
       ...options,
       credentials: "include", // Required for session-based auth
       headers,

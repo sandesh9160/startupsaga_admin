@@ -169,6 +169,7 @@ export default function CityFormPage() {
                 toast.success("SEO tags optimized");
             }
         } catch (err) {
+            console.error("❌ City SEO Generation Error:", err);
             toast.error("AI generation failed");
         } finally {
             setIsSaving(false);
@@ -188,6 +189,7 @@ export default function CityFormPage() {
                 toast.success("Description enhanced by AI");
             }
         } catch (err) {
+            console.error("❌ City Rewrite Error:", err);
             toast.error("AI rewrite failed");
         } finally {
             setIsSaving(false);
