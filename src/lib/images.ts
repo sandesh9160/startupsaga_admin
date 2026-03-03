@@ -1,7 +1,8 @@
 
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_IMAGE_URL
+
+const BASE_URL = process.env.NEXT_PUBLIC_IMAGE_URL ?? "";
+console.log(BASE_URL);
 
 export function getSafeImageSrc(src: unknown, fallback: string = "/placeholder.svg") {
   if (typeof src === "string") {

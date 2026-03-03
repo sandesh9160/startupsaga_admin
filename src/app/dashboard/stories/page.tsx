@@ -260,6 +260,7 @@ export default function StoriesPage() {
                                             <div className="flex items-center gap-3">
                                                 <div className="h-10 w-14 rounded-lg bg-slate-100 overflow-hidden border border-slate-100 shrink-0">
                                                     <img
+                                                        // src={process.env.NEXT_PUBLIC_IMAGE_URL + story.thumbnail}
                                                         src={getSafeImageSrc(story.thumbnail)}
                                                         alt={story.title}
                                                         className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
