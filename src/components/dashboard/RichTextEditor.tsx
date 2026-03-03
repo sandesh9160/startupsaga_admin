@@ -334,7 +334,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
     const fontFamilies = [
         { value: 'Inter', label: 'Inter' },
         { value: 'Arial', label: 'Arial' },
-        { value: 'Georgia', label: 'Georgia' },
+        { value: 'Georgia, serif', label: 'Georgia, Serif' },
         { value: 'Times New Roman', label: 'Times New Roman' },
         { value: 'Courier New', label: 'Courier New' },
         { value: 'Verdana', label: 'Verdana' },

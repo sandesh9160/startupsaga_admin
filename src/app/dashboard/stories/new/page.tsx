@@ -828,7 +828,7 @@ function NewStoryPageContent() {
                         </button>
                         <div className="flex flex-col">
                             <h1 className="text-xl font-bold tracking-tight text-zinc-900 mt-1">
-                                {publishType === 'story' ? 'Write a Story' : (publishType === 'submission' ? 'Review Submission' : 'Venture Profile')}
+                                {publishType === 'story' ? 'Write a Story' : (publishType === 'submission' ? 'Review Submission' : 'Startup Profile')}
                             </h1>
                         </div>
                     </div>
@@ -861,7 +861,7 @@ function NewStoryPageContent() {
                                 publishType === "startup" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-zinc-600"
                             )}
                         >
-                            Venture
+                            Startup
                         </button>
                     </div>
 
@@ -1263,7 +1263,7 @@ function NewStoryPageContent() {
                                             <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
                                                 <Building2 className="h-3 w-3 text-white" />
                                             </div>
-                                            {publishType === 'submission' ? 'Submission Details' : 'Venture Identity'}
+                                            {publishType === 'submission' ? 'Submission Details' : 'Startup Identity'}
                                         </CardTitle>
                                         <Button
                                             onClick={handleGenerateStartupContent}

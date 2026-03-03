@@ -402,7 +402,7 @@ function NewStartupForm() {
                         className="h-9 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold uppercase tracking-widest shadow-md shadow-indigo-200 transition-all active:scale-95"
                     >
                         {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
-                        Commit Venture
+                        Publish Startup
                     </Button>
                 </div>
             </div>
@@ -1110,7 +1110,7 @@ function NewStartupForm() {
                                 ) : (
                                     <div className="flex items-center gap-2">
                                         <Save className="h-4 w-4" />
-                                        <span>Commit Venture</span>
+                                        <span>Publish Startup</span>
                                     </div>
                                 )}
                             </Button>

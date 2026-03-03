@@ -1,6 +1,7 @@
-import { API_BASE_URL } from "./api";
 
-const BASE_URL = API_BASE_URL.replace("/api", "");
+
+const BASE_URL =
+  process.env.NEXT_PUBLIC_IMAGE_URL?.replace(/\/api\/?$/, "") || "";
 
 export function getSafeImageSrc(src: unknown, fallback: string = "/placeholder.svg") {
   if (typeof src === "string") {
