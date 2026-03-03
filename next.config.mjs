@@ -60,19 +60,19 @@ const nextConfig = {
     return [
       {
         source: '/admin/:path*',
-        destination: 'http://127.0.0.1:8000/admin/:path*',
+        destination: 'https://api.startupsaga.in/admin/:path*',
       },
       {
         source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/api/:path*',
+        destination: 'https://api.startupsaga.in/api/:path*',
       },
       {
         source: '/static/:path*',
-        destination: 'http://127.0.0.1:8000/static/:path*',
+        destination: 'https://api.startupsaga.in/static/:path*',
       },
       {
         source: '/media/:path*',
-        destination: 'http://127.0.0.1:8000/media/:path*',
+        destination: 'https://api.startupsaga.in/media/:path*',
       },
     ];
   },
