@@ -1,7 +1,7 @@
 
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_IMAGE_URL?.replace(/\/api\/?$/, "") || "";
+  process.env.NEXT_PUBLIC_IMAGE_URL
 
 export function getSafeImageSrc(src: unknown, fallback: string = "/placeholder.svg") {
   if (typeof src === "string") {
