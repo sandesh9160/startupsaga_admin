@@ -1,10 +1,8 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { API_BASE_URL } from "@/lib/api";
+import { getPublicOrigin } from "@/lib/request-origin";
 
 export async function GET(request: Request) {
-    const cookieStore = await cookies();
-
     // Call backend to invalidate session
     try {
         // Try to get cookies from the incoming request to pass them to backend
@@ -21,8 +19,10 @@ export async function GET(request: Request) {
         console.error("Backend logout failed:", e.message);
     }
 
+    const baseUrl = getPublicOrigin(request);
+
     // Redirect to login page
-    const response = NextResponse.redirect(new URL("/admin", request.url));
+    const response = NextResponse.redirect(new URL("/admin", baseUrl));
 
     // Clear cookies
     response.cookies.delete("sessionid");

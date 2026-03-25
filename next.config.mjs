@@ -34,6 +34,20 @@
 
 // // export default nextConfig;
 
+/** Backend origin for rewrites (no trailing slash). Override via BACKEND_ORIGIN or derive from NEXT_PUBLIC_API_URL. */
+function getBackendOrigin() {
+  const explicit = process.env.BACKEND_ORIGIN || process.env.NEXT_PUBLIC_BACKEND_ORIGIN;
+  if (explicit) {
+    return explicit.replace(/\/$/, "");
+  }
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl) {
+    const trimmed = apiUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
+    if (trimmed) return trimmed;
+  }
+  return "https://api.startupsaga.in";
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -57,22 +71,23 @@ const nextConfig = {
   },
 
   async rewrites() {
+    const origin = getBackendOrigin();
     return [
       {
         source: '/admin/:path*',
-        destination: 'https://api.startupsaga.in/admin/:path*',
+        destination: `${origin}/admin/:path*`,
       },
       {
         source: '/api/:path*',
-        destination: 'https://api.startupsaga.in/api/:path*',
+        destination: `${origin}/api/:path*`,
       },
       {
         source: '/static/:path*',
-        destination: 'https://api.startupsaga.in/static/:path*',
+        destination: `${origin}/static/:path*`,
       },
       {
         source: '/media/:path*',
-        destination: 'https://api.startupsaga.in/media/:path*',
+        destination: `${origin}/media/:path*`,
       },
     ];
   },

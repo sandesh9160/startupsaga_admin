@@ -26,8 +26,17 @@ export type {
 
 /**
  * Base API configuration
+ * - Server-side: uses the full NEXT_PUBLIC_API_URL
+ * - Client-side (browser): uses '/api' proxied by Next.js rewrites → avoids CORS
  */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+
+const getBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    return "/api"; // Next.js rewrite: /api/* → BACKEND /api/*
+  }
+  return API_BASE_URL;
+};
 
 /**
  * Core fetch wrapper with error handling and CSRF support
@@ -35,12 +44,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1
  * @param options - Request options
  */
 export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
-  let url = `${API_BASE_URL}${endpoint}`;
-
-  // Handle IPv6 loopback issues on local dev environments
-  if (typeof window === "undefined" && url.includes("localhost")) {
-    url = url.replace("localhost", "127.0.0.1");
-  }
+  const url = `${getBaseUrl()}${endpoint}`;
 
   try {
     const method = (options.method || "GET").toUpperCase();
