@@ -469,7 +469,7 @@ export default function NewsletterPage() {
                                                                 }
                                                                 if (confirm("Delete this template?")) {
                                                                     try {
-                                                                        await fetch(`${API_BASE_URL}/newsletter/templates/${t.id}/delete/`, { method: "DELETE" });
+                                                                        await newsletterTemplatesApi.delete(t.id);
                                                                         toast.success("Template deleted");
                                                                         loadTemplates();
                                                                     } catch (err) {
@@ -615,15 +615,9 @@ export default function NewsletterPage() {
                                                             onChange={async (e) => {
                                                                 const file = e.target.files?.[0];
                                                                 if (!file) return;
-                                                                const formData = new FormData();
-                                                                formData.append('file', file);
                                                                 toast.info("Uploading logo...");
                                                                 try {
-                                                                    const res = await fetch(`${API_BASE_URL}/media/upload/`, {
-                                                                        method: 'POST',
-                                                                        body: formData,
-                                                                    });
-                                                                    const data = await res.json();
+                                                                    const data = await uploadMediaItem(file);
                                                                     if (data.url) {
                                                                         setActiveTemplate({ ...activeTemplate, logo_url: data.url });
                                                                         toast.success("Logo uploaded!");

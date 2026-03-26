@@ -93,7 +93,9 @@ export interface Hub {
     status?: string;
     meta_title?: string;
     meta_description?: string;
+    meta_keywords?: string;
     og_image?: string;
+    image_alt?: string;
 }
 
 /**
@@ -107,6 +109,11 @@ export interface Category {
     startupCount: number;
     storyCount?: number;
     description: string;
+    status?: string;
+    meta_title?: string;
+    meta_description?: string;
+    meta_keywords?: string;
+    og_image?: string;
 }
 
 /**
@@ -117,6 +124,19 @@ export interface Submission {
     startup_name: string;
     website: string;
     description: string;
+    full_story?: string;
+    founder_name?: string;
+    founder_linkedin?: string;
+    email?: string;
+    category?: string;
+    city?: string;
+    founded_year?: number | string;
+    funding_stage?: string;
+    business_model?: string;
+    team_size?: string;
+    sector?: string;
+    industry_tags?: string[];
+    founders_data?: any[];
     status: "pending" | "approved" | "rejected";
     submitted_at: string;
     contact_email?: string;
@@ -124,6 +144,12 @@ export interface Submission {
     thumbnail?: string;
     og_image?: string;
     logo_url?: string;
+    meta_title?: string;
+    meta_description?: string;
+    meta_keywords?: string;
+    image_alt?: string;
+    startup_slug?: string | null;
+    created_at?: string;
 }
 
 /**
