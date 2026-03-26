@@ -22,6 +22,13 @@ export async function loginAction(formData: FormData) {
     }
 
     try {
+        const sharedCookieDomain =
+            process.env.SESSION_COOKIE_DOMAIN ||
+            process.env.NEXT_PUBLIC_SESSION_COOKIE_DOMAIN ||
+            undefined;
+        const secureCookies = process.env.NODE_ENV === "production";
+        const sameSite = secureCookies ? "none" : "lax";
+
         // 2. Authenticate with Django backend
         const res = await fetch(`${API_BASE_URL}/session-login/`, {
             method: "POST",
@@ -58,15 +65,27 @@ export async function loginAction(formData: FormData) {
         }
 
         const sessionId = sessionMatch[1];
+        const csrfMatch = setCookieHeader.match(/csrftoken=([^;]+)/);
 
         // 5. Store real session cookie
         const cookieStore = await cookies();
         cookieStore.set("sessionid", sessionId, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            secure: secureCookies,
+            sameSite,
             path: "/",
+            ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
         });
+
+        if (csrfMatch?.[1]) {
+            cookieStore.set("csrftoken", csrfMatch[1], {
+                httpOnly: false,
+                secure: secureCookies,
+                sameSite,
+                path: "/",
+                ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
+            });
+        }
 
         // Cleanup any stale tokens
         cookieStore.delete("token");
@@ -103,6 +122,7 @@ export async function logoutAction() {
 
     // Delete real Django session cookie
     cookieStore.delete("sessionid");
+    cookieStore.delete("csrftoken");
     cookieStore.delete("token");
     cookieStore.delete("refresh_token");
 
