@@ -83,6 +83,10 @@ const SECTORS = [
 
 const TEAM_SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
 
+function stripHtml(html: string) {
+    return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function NewStartupForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -119,8 +123,7 @@ function NewStartupForm() {
         meta_description: "",
         meta_keywords: "",
         image_alt: "",
-        excerpt: "", // TL;DR
-        content: "", // Startup Journey Rich Text
+        content: "", // Rich text editor mirror for persisted description
     });
 
     const [tagInput, setTagInput] = useState("");
@@ -150,9 +153,17 @@ function NewStartupForm() {
                         slug: prev.slug || (sub.startup_name ? sub.startup_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : ""),
                         website_url: sub.website || prev.website_url,
                         founder_name: sub.founder_name || prev.founder_name,
-                        excerpt: sub.description || prev.excerpt,
+                        description: sub.full_story || sub.description || prev.description,
                         content: sub.full_story || prev.content,
                         category: sub.category || prev.category,
+                        city: sub.city || prev.city,
+                        founded_year: sub.founded_year || prev.founded_year,
+                        stage: sub.funding_stage || prev.stage,
+                        business_model: sub.business_model || prev.business_model,
+                        team_size: sub.team_size || prev.team_size,
+                        sector: sub.sector || prev.sector,
+                        industry_tags: sub.industry_tags || prev.industry_tags,
+                        founders_data: sub.founders_data || prev.founders_data,
                         logo: sub.logo || prev.logo
                     }));
                     toast.info("Submission data pre-filled");
@@ -195,6 +206,7 @@ function NewStartupForm() {
                 ...prev,
                 tagline: generatedTagline || prev.tagline,
                 description: generatedDesc || prev.description,
+                content: generatedDesc || prev.content,
                 meta_title: seoResult.meta_title || `${formData.name} | Startup Directory`,
                 meta_description: seoResult.meta_description || generatedDesc || ""
             }));
@@ -256,11 +268,14 @@ function NewStartupForm() {
         e.preventDefault();
         setIsLoading(true);
         try {
+            const persistedDescription = formData.content?.trim() || formData.description?.trim() || "";
+            const { content, sector, stage, ...restFormData } = formData;
             const cleanData = {
-                ...formData,
+                ...restFormData,
+                description: persistedDescription,
                 founded_year: formData.founded_year ? parseInt(formData.founded_year.toString()) : undefined,
-                funding_stage: formData.stage,
-                industry_tags: formData.industry_tags.length > 0 ? formData.industry_tags : (formData.sector ? [formData.sector] : []),
+                funding_stage: stage,
+                industry_tags: formData.industry_tags.length > 0 ? formData.industry_tags : (sector ? [sector] : []),
             };
             if (submissionId) {
                 (cleanData as any).submission_id = submissionId;
@@ -314,7 +329,7 @@ function NewStartupForm() {
         setIsGenerating(true);
         try {
             const title = formData.name;
-            const description = formData.description || formData.excerpt || formData.name;
+            const description = stripHtml(formData.content || formData.description || formData.name);
             const content = formData.content || formData.description || formData.name;
 
             const template = await getPromptTemplate("Startup SEO Generator");
@@ -501,17 +516,7 @@ function NewStartupForm() {
                                 </div>
                             </div>
 
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Excerpt (TL;DR)</Label>
-                                <Textarea
-                                    placeholder="Brief summary that appears at the top..."
-                                    className="min-h-[100px] px-3 py-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 resize-none leading-relaxed transition-all text-sm"
-                                    value={formData.excerpt !== undefined ? formData.excerpt : formData.description}
-                                    onChange={(e) => setFormData({ ...formData, excerpt: e.target.value, description: e.target.value })}
-                                />
-                            </div>
-
-                            {/* Logo & OG Image */}
+                                {/* Logo & OG Image */}
                             <div className="grid grid-cols-2 gap-5">
                                 <div className="space-y-1.5">
                                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Logo</Label>
@@ -643,24 +648,25 @@ function NewStartupForm() {
                         </motion.div>
                     )}
 
-                    {/* Startup Journey Editor */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
-                        <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                                <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
-                                    <Sparkles className="h-3 w-3 text-white" />
+                        {/* Startup Description Editor */}
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
+                            <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
+                                        <Sparkles className="h-3 w-3 text-white" />
+                                    </div>
+                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Startup Description</span>
                                 </div>
-                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Startup Journey</span>
+                                <span className="text-[10px] font-medium text-zinc-400">Saved to the startup description field</span>
+                            </div>
+                            <div className="p-0">
+                                <RichTextEditor
+                                    content={formData.content}
+                                    onChange={(val) => setFormData({ ...formData, content: val, description: val })}
+                                    placeholder="Write the full startup description..."
+                                />
                             </div>
                         </div>
-                        <div className="p-0">
-                            <RichTextEditor
-                                content={formData.content}
-                                onChange={(val) => setFormData({ ...formData, content: val })}
-                                placeholder="Write the full startup journey..."
-                            />
-                        </div>
-                    </div>
 
                     {/* Business Stats Card */}
                     <motion.div

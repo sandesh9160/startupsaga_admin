@@ -26,18 +26,19 @@ export type {
 
 /**
  * Base API configuration
- * - Server-side: uses the full NEXT_PUBLIC_API_URL
- * - Client-side (browser): uses '/api' proxied by Next.js rewrites → avoids CORS
+ * - Supports both the current NEXT_PUBLIC_API_URL and the older
+ *   NEXT_PUBLIC_API_BASE_URL used in some local environments.
  */
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+const resolveApiBaseUrl = () =>
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "http://127.0.0.1:8000/api";
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 const getBaseUrl = () => {
-  if (typeof window !== "undefined") {
-    return "/api"; // Next.js rewrite: /api/* → BACKEND /api/*
-  }
-  return API_BASE_URL;
+  return resolveApiBaseUrl();
 };
-
 /**
  * Core fetch wrapper with error handling and CSRF support
  * @param endpoint - API endpoint (e.g., /stories/)
@@ -45,9 +46,10 @@ const getBaseUrl = () => {
  */
 export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const url = `${getBaseUrl()}${endpoint}`;
+  const method = (options.method || "GET").toUpperCase();
+  const isStartupDebugRequest = endpoint.includes("/startups/");
 
   try {
-    const method = (options.method || "GET").toUpperCase();
     const isSafeMethod = ["GET", "HEAD", "OPTIONS", "TRACE"].includes(method);
 
     const headers: Record<string, string> = {
@@ -67,6 +69,15 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
       headers["X-Requested-With"] = "XMLHttpRequest";
     }
 
+    if (isStartupDebugRequest) {
+      console.log("[fetchAPI:startups] request", {
+        method,
+        endpoint,
+        url,
+        body: options.body,
+      });
+    }
+
     const res = await fetch(url, {
       cache: "no-store", // Completely disable caching for admin data
       ...options,
@@ -76,6 +87,15 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
 
     if (!res.ok) {
       const errorText = await res.text();
+      if (isStartupDebugRequest) {
+        console.error("[fetchAPI:startups] error response", {
+          method,
+          endpoint,
+          status: res.status,
+          statusText: res.statusText,
+          body: errorText,
+        });
+      }
       // Remove console.error to avoid Next.js overlay on handled errors
       throw new Error(`API Error: ${res.status} ${res.statusText} - ${errorText}`);
     }
@@ -83,11 +103,66 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     // Some endpoints (like DELETE) might return 204 No Content
     if (res.status === 204) return null;
 
-    return res.json();
+    const json = await res.json();
+    if (isStartupDebugRequest) {
+      console.log("[fetchAPI:startups] response", {
+        method,
+        endpoint,
+        status: res.status,
+        json,
+      });
+    }
+    return json;
   } catch (error) {
+    if (isStartupDebugRequest) {
+      console.error("[fetchAPI:startups] request failed", {
+        method,
+        endpoint,
+        url,
+        error,
+      });
+    }
     // Only throw, do not console.error which triggers Next.js dev overlay unconditionally
     throw error;
   }
+}
+
+/**
+ * Multipart/form-data upload helper with the same auth/CSRF behavior as fetchAPI.
+ */
+export async function uploadAPI(endpoint: string, formData: FormData) {
+  const url = `${getBaseUrl()}${endpoint}`;
+  const headers: Record<string, string> = {};
+
+  if (typeof window !== "undefined") {
+    const csrfToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("csrftoken="))
+      ?.split("=")[1];
+
+    if (csrfToken) {
+      headers["X-CSRFToken"] = csrfToken;
+    }
+    headers["X-Requested-With"] = "XMLHttpRequest";
+  }
+
+  const res = await fetch(url, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+    headers,
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`API Error: ${res.status} ${res.statusText} - ${errorText}`);
+  }
+
+  if (res.status === 204) {
+    return null;
+  }
+
+  return res.json();
 }
 
 /**
@@ -550,6 +625,14 @@ export const newsletterTemplatesApi = {
     method: "POST",
     body: JSON.stringify(data),
   }),
+  delete: (id: number) => fetchAPI(`/newsletter/templates/${id}/delete/`, {
+    method: "DELETE",
+  }),
 };
 
 export const getMediaItems = () => fetchList<any>("/media/");
+export const uploadMediaItem = (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return uploadAPI("/media/upload/", formData);
+};

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { LayoutTemplate, Loader2, Edit2, Navigation } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/lib/api";
 
 export default function DashboardMenusPage() {
     const router = useRouter();
@@ -16,7 +17,7 @@ export default function DashboardMenusPage() {
     useEffect(() => {
         const fetchCheck = async () => {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/positions/`);
+                const res = await fetch(`${API_BASE_URL}/navigation/positions/`, { credentials: "include" });
                 if (res.ok) {
                     const posData = await res.json();
                     setPositions(posData || []);
@@ -26,7 +27,7 @@ export default function DashboardMenusPage() {
 
                     await Promise.all(validPositions.map(async (pos: any) => {
                         try {
-                            const itemRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/?position=${pos.id}`);
+                            const itemRes = await fetch(`${API_BASE_URL}/navigation/?position=${pos.id}`, { credentials: "include" });
                             if (itemRes.ok) {
                                 const items = await itemRes.json();
                                 itemsMap[pos.id] = items;

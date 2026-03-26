@@ -38,6 +38,12 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
+const PREVIEW_SITE_URL =
+    process.env.NEXT_PUBLIC_FRONTEND_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    "http://localhost:3000";
+
 export default function StartupsPage() {
     const router = useRouter();
     const [startups, setStartups] = useState<Startup[]>([]);
@@ -207,6 +213,7 @@ export default function StartupsPage() {
                                     <th className="px-5 py-3.5">Startup</th>
                                     <th className="px-4 py-3.5 text-center">Category</th>
                                     <th className="px-4 py-3.5 text-center">Location</th>
+                                    <th className="px-4 py-3.5 text-center">Status</th>
                                     <th className="px-4 py-3.5 text-center">Featured</th>
                                     <th className="px-5 py-3.5 text-right">Actions</th>
                                 </tr>
@@ -215,14 +222,14 @@ export default function StartupsPage() {
                                 {isLoading ? (
                                     [...Array(6)].map((_, i) => (
                                         <tr key={i} className="animate-pulse">
-                                            <td colSpan={5} className="px-5 py-4">
+                                            <td colSpan={6} className="px-5 py-4">
                                                 <div className="h-8 bg-slate-50 rounded-lg w-full" />
                                             </td>
                                         </tr>
                                     ))
                                 ) : startups.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5}>
+                                        <td colSpan={6}>
                                             <div className="flex flex-col items-center justify-center py-20 text-center">
                                                 <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4">
                                                     <Building2 size={22} className="text-indigo-400" />
@@ -280,6 +287,23 @@ export default function StartupsPage() {
                                             </div>
                                         </td>
 
+                                        {/* Status */}
+                                        <td className="px-4 py-3.5 text-center">
+                                            <Badge
+                                                className={
+                                                    startup.status === "published"
+                                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold"
+                                                        : startup.status === "draft"
+                                                            ? "bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold"
+                                                            : startup.status === "pending"
+                                                                ? "bg-sky-50 text-sky-700 border border-sky-100 text-[10px] font-bold"
+                                                                : "bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold"
+                                                }
+                                            >
+                                                {(startup.status || "unknown").replace(/^\w/, (m) => m.toUpperCase())}
+                                            </Badge>
+                                        </td>
+
                                         {/* Featured toggle */}
                                         <td className="px-4 py-3.5 text-center">
                                             <button
@@ -303,7 +327,7 @@ export default function StartupsPage() {
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <button
-                                                    onClick={() => window.open(`${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'}/startups/${startup.slug}`, "_blank")}
+                                                    onClick={() => window.open(`${PREVIEW_SITE_URL}/startups/${startup.slug}`, "_blank")}
                                                     title="Preview"
                                                     className="h-8 w-8 rounded-lg bg-sky-100 hover:bg-sky-500 text-sky-600 hover:text-white transition-all flex items-center justify-center"
                                                 >

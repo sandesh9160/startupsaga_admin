@@ -77,6 +77,7 @@ export default function CityFormPage() {
         status: "draft",
         meta_title: "",
         meta_description: "",
+        meta_keywords: "",
         image_alt: "",
     });
 
@@ -102,6 +103,7 @@ export default function CityFormPage() {
                 status: city.status || "draft",
                 meta_title: city.meta_title || "",
                 meta_description: city.meta_description || "",
+                meta_keywords: city.meta_keywords || "",
                 image_alt: city.image_alt || "",
             });
             fetchAPI("/media/").then(data => setMediaItems(Array.isArray(data) ? data : [])).catch(e => console.error(e));
@@ -164,7 +166,8 @@ export default function CityFormPage() {
                 setFormData(prev => ({
                     ...prev,
                     meta_title: aiData.meta_title,
-                    meta_description: aiData.meta_description
+                    meta_description: aiData.meta_description,
+                    meta_keywords: aiData.meta_keywords || aiData.keywords || prev.meta_keywords || ""
                 }));
                 toast.success("SEO tags optimized");
             }
@@ -432,6 +435,15 @@ export default function CityFormPage() {
                                             value={formData.meta_description}
                                             onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
                                             className="min-h-[80px] rounded-xl bg-white border-zinc-200 focus:ring-2 focus:ring-primary/10 text-xs font-medium p-4 resize-none leading-relaxed"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 ml-1">Meta Keywords</Label>
+                                        <Textarea
+                                            placeholder="startup hub, Bangalore startups, startup ecosystem, founder stories"
+                                            value={formData.meta_keywords || ""}
+                                            onChange={(e) => setFormData({ ...formData, meta_keywords: e.target.value })}
+                                            className="min-h-[72px] rounded-xl bg-white border-zinc-200 focus:ring-2 focus:ring-primary/10 text-xs font-medium p-4 resize-none leading-relaxed"
                                         />
                                     </div>
                                 </CardContent>

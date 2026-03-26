@@ -34,7 +34,7 @@ export async function CitySEOGenerator(name: string, description: string) {
                 console.error("Failed to parse City SEO AI result", e);
             }
         }
-    }
+    }console.warn("City SEO Generator: Using fallback SEO generation for", name);
 
     // Fallback to standard backend SEO if custom prompt not found or failed
     return await generateSEO({

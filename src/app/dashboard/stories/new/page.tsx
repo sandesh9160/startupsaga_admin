@@ -201,6 +201,9 @@ function NewStoryPageContent() {
     // Local state to hold raw submission info for display
     const [submissionDetails, setSubmissionDetails] = useState<any | null>(null);
 
+    const buildSubmissionStoryTitle = (startupName: string) =>
+        startupName ? `${startupName}: A Startup Journey` : "";
+
     const sectionTemplates = [
         { title: "The Problem", placeholder: "Describe the problem this startup is solving..." },
         { title: "The Solution", placeholder: "Explain how the startup solves this problem..." },
@@ -335,6 +338,16 @@ function NewStoryPageContent() {
             .replace(/^-+|-+$/g, '');
     };
 
+    const normalizeStoryContent = () => {
+        const sectionsHtml = generateContentFromSections();
+        return (
+            formData.content?.trim() ||
+            sectionsHtml.trim() ||
+            formData.excerpt?.trim() ||
+            ""
+        );
+    };
+
     // Load existing story for editing
     // Load existing story for editing
     useEffect(() => {
@@ -403,10 +416,11 @@ function NewStoryPageContent() {
             getSubmissionDetail(parseInt(submissionId))
                 .then((sub: any) => {
                     const titleFromSubmission = sub.startup_name || "";
+                    const derivedStoryTitle = buildSubmissionStoryTitle(titleFromSubmission);
                     setFormData((prev: StoryFormData) => ({
                         ...prev,
-                        title: titleFromSubmission ? `${titleFromSubmission}: A Startup Journey` : "",
-                        slug: generateSlugFromText(titleFromSubmission),
+                        title: derivedStoryTitle,
+                        slug: generateSlugFromText(derivedStoryTitle),
                         category: sub.category || "Funding",
                         city: sub.city || "Mumbai",
                         excerpt: sub.excerpt || sub.short_description || sub.description || "",
@@ -417,6 +431,8 @@ function NewStoryPageContent() {
                         og_image: sub.thumbnail || sub.logo || sub.logo_url || prev.og_image || "",
                         image_alt: sub.image_alt || prev.image_alt || "",
                     }));
+                    setSlugManuallyEdited(false);
+                    setIsSlugSynced(true);
 
                     setStartupData(prev => ({
                         ...prev,
@@ -427,8 +443,13 @@ function NewStoryPageContent() {
                         description: sub.full_story || sub.description || "",
                         category: sub.category || "",
                         city: sub.city || "",
+                        founded_year: sub.founded_year || "",
                         stage: sub.funding_stage || "",
                         business_model: sub.business_model || "",
+                        team_size: sub.team_size || "",
+                        sector: sub.sector || "",
+                        industry_tags: sub.industry_tags || [],
+                        founders_data: sub.founders_data || [],
                         logo: sub.logo || "",
                         og_image: sub.thumbnail || sub.logo || sub.og_image || "",
                         meta_title: sub.meta_title || "",
@@ -446,6 +467,18 @@ function NewStoryPageContent() {
                 .finally(() => setIsLoading(false));
         }
     }, [submissionId]);
+
+    const handleSubmissionStatusChange = async (status: "pending" | "approved" | "rejected") => {
+        if (!submissionId) return;
+        try {
+            await updateSubmissionStatus(parseInt(submissionId), status);
+            setStartupData(prev => ({ ...prev, status }));
+            toast.success(`Submission marked as ${status}`);
+        } catch (err: any) {
+            console.error("Failed to update submission status", err);
+            toast.error(err?.message || `Failed to mark submission as ${status}`);
+        }
+    };
 
 
     useEffect(() => {
@@ -748,11 +781,16 @@ function NewStoryPageContent() {
         try {
             if (publishType === "story") {
                 if (!formData.title.trim()) { toast.error("Please enter a story title!"); setIsPublishing(false); return; }
-                if (!formData.content.trim()) { toast.error("Please add content to your story!"); setIsPublishing(false); return; }
-                if (!formData.slug.trim()) { toast.error("Please provide a URL slug!"); setIsPublishing(false); return; }
+                const normalizedContent = normalizeStoryContent();
+                const normalizedSlug = (formData.slug || generateSlugFromText(formData.title)).trim();
+                if (!normalizedContent) { toast.error("Please add content to your story!"); setIsPublishing(false); return; }
+                if (!normalizedSlug) { toast.error("Please provide a URL slug!"); setIsPublishing(false); return; }
 
                 const storyData: any = {
                     ...formData,
+                    slug: normalizedSlug,
+                    content: normalizedContent,
+                    excerpt: formData.excerpt?.trim() || normalizedContent.replace(/<[^>]*>/g, "").slice(0, 220),
                     sections: sections.length > 0 ? sections : undefined,
                     status: targetStatus
                 };
@@ -776,8 +814,13 @@ function NewStoryPageContent() {
                     full_story: startupData.description,
                     category: startupData.category,
                     city: startupData.city,
+                    founded_year: startupData.founded_year ? parseInt(startupData.founded_year.toString()) : null,
                     funding_stage: startupData.stage,
                     business_model: startupData.business_model,
+                    team_size: startupData.team_size,
+                    sector: startupData.sector,
+                    industry_tags: startupData.industry_tags,
+                    founders_data: startupData.founders_data,
                     logo: startupData.logo,
                     thumbnail: startupData.og_image,
                     og_image: startupData.og_image,
@@ -1235,19 +1278,19 @@ function NewStoryPageContent() {
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <button
-                                                onClick={() => updateSubmissionStatus(parseInt(submissionId!), 'pending').then(() => setStartupData(prev => ({ ...prev, status: 'pending' })))}
+                                                onClick={() => handleSubmissionStatusChange('pending')}
                                                 className={cn("px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all", startupData.status === 'pending' ? "bg-amber-600 text-white shadow-md shadow-amber-200" : "bg-white text-zinc-400 border border-zinc-100")}
                                             >
                                                 Pending
                                             </button>
                                             <button
-                                                onClick={() => updateSubmissionStatus(parseInt(submissionId!), 'approved').then(() => setStartupData(prev => ({ ...prev, status: 'approved' })))}
+                                                onClick={() => handleSubmissionStatusChange('approved')}
                                                 className={cn("px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all", startupData.status === 'approved' ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "bg-white text-zinc-400 border border-zinc-100")}
                                             >
                                                 Approve
                                             </button>
                                             <button
-                                                onClick={() => updateSubmissionStatus(parseInt(submissionId!), 'rejected').then(() => setStartupData(prev => ({ ...prev, status: 'rejected' })))}
+                                                onClick={() => handleSubmissionStatusChange('rejected')}
                                                 className={cn("px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all", startupData.status === 'rejected' ? "bg-rose-600 text-white shadow-md shadow-rose-200" : "bg-white text-zinc-400 border border-zinc-100")}
                                             >
                                                 Reject

@@ -46,6 +46,7 @@ import {
     startupsApi,
     getCategories,
     getHubs,
+    getSubmissions,
     getSubmissionDetail,
     Category,
     Hub
@@ -83,6 +84,14 @@ const SECTORS = [
 
 const TEAM_SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
 
+function stripHtml(html: string) {
+    return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function normalizeSlugLike(value: string) {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 function StartupEditForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -93,6 +102,7 @@ function StartupEditForm() {
     const [submissionDetails, setSubmissionDetails] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [saveMode, setSaveMode] = useState<"default" | "draft">("default");
     const [categories, setCategories] = useState<Category[]>([]);
     const [hubs, setHubs] = useState<Hub[]>([]);
 
@@ -121,8 +131,7 @@ function StartupEditForm() {
         meta_description: "",
         meta_keywords: "",
         image_alt: "",
-        excerpt: "", // TL;DR
-        content: "", // Startup Journey Rich Text
+        content: "", // Rich text editor mirror for persisted description
     });
 
     const [tagInput, setTagInput] = useState("");
@@ -145,6 +154,7 @@ function StartupEditForm() {
             setIsLoading(true);
             getSubmissionDetail(parseInt(submissionId))
                 .then((sub: any) => {
+                    console.log("[StartupEdit] submission detail loaded", sub);
                     setSubmissionDetails(sub);
                     setFormData(prev => ({
                         ...prev,
@@ -152,9 +162,17 @@ function StartupEditForm() {
                         slug: prev.slug || (sub.startup_name ? sub.startup_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : ""),
                         website_url: sub.website || prev.website_url,
                         founder_name: sub.founder_name || prev.founder_name,
-                        excerpt: sub.description || prev.excerpt,
+                        description: sub.full_story || sub.description || prev.description,
                         content: sub.full_story || prev.content,
                         category: sub.category || prev.category,
+                        city: sub.city || prev.city,
+                        founded_year: sub.founded_year || prev.founded_year,
+                        stage: sub.funding_stage || prev.stage,
+                        business_model: sub.business_model || prev.business_model,
+                        team_size: sub.team_size || prev.team_size,
+                        sector: sub.sector || prev.sector,
+                        industry_tags: sub.industry_tags || prev.industry_tags,
+                        founders_data: sub.founders_data || prev.founders_data,
                         logo: sub.logo || prev.logo
                     }));
                     toast.info("Submission data pre-filled");
@@ -164,18 +182,55 @@ function StartupEditForm() {
         } else if (startupSlug && startupSlug !== 'new') {
             setIsLoading(true);
             startupsApi.get(startupSlug)
-                .then((data: any) => {
+                .then(async (data: any) => {
+                    console.log("[StartupEdit] startup detail loaded", {
+                        startupSlug,
+                        data,
+                    });
+                    const submissions = await getSubmissions().catch(() => []);
+                    const matchedSubmission = (submissions || []).find((sub: any) => {
+                        const submissionSlug = normalizeSlugLike(sub.startup_name || "");
+                        const startupNameSlug = normalizeSlugLike(data.name || "");
+                        const submissionWebsite = (sub.website || "").trim().toLowerCase();
+                        const startupWebsite = (data.website_url || data.website || "").trim().toLowerCase();
+                        return (
+                            submissionSlug === startupSlug ||
+                            submissionSlug === startupNameSlug ||
+                            (!!submissionWebsite && submissionWebsite === startupWebsite)
+                        );
+                    });
+
+                    let matchedSubmissionDetail = matchedSubmission;
+
+                    if (matchedSubmission?.id) {
+                        matchedSubmissionDetail = await getSubmissionDetail(matchedSubmission.id).catch(() => matchedSubmission);
+                    }
+
+                    if (matchedSubmissionDetail) {
+                        console.log("[StartupEdit] matched submission for startup", {
+                            startupSlug,
+                            submissionId: matchedSubmissionDetail.id,
+                            matchedSubmission: matchedSubmissionDetail,
+                        });
+                        setSubmissionDetails(matchedSubmissionDetail);
+                    }
+
                     setFormData(prev => ({
                         ...prev,
                         ...data,
+                        description: data.description || prev.description,
                         stage: data.funding_stage || prev.stage,
                         category: typeof data.category === 'object' && data.category ? data.category.id?.toString() : data.category?.toString() || prev.category,
                         city: typeof data.city === 'object' && data.city ? data.city.id?.toString() : data.city?.toString() || prev.city,
-                        sector: (data.industry_tags && data.industry_tags.length) ? data.industry_tags[0] : prev.sector,
-                        industry_tags: data.industry_tags || prev.industry_tags,
-                        founders_data: data.founders_data || prev.founders_data,
-                        excerpt: data.excerpt || data.description || prev.excerpt,
-                        content: data.content || prev.content,
+                        founded_year: data.founded_year?.toString() || matchedSubmissionDetail?.founded_year?.toString() || prev.founded_year,
+                        sector: matchedSubmissionDetail?.sector || prev.sector,
+                        business_model: data.business_model || matchedSubmissionDetail?.business_model || prev.business_model,
+                        team_size: data.team_size || matchedSubmissionDetail?.team_size || prev.team_size,
+                        industry_tags: (data.industry_tags && data.industry_tags.length) ? data.industry_tags : (matchedSubmissionDetail?.industry_tags || prev.industry_tags),
+                        founders_data: (data.founders_data && data.founders_data.length) ? data.founders_data : (matchedSubmissionDetail?.founders_data || prev.founders_data),
+                        founder_name: data.founder_name || matchedSubmissionDetail?.founder_name || prev.founder_name,
+                        founder_linkedin: data.founder_linkedin || prev.founder_linkedin,
+                        content: data.description || prev.content,
                     }));
                 })
                 .catch(err => {
@@ -276,34 +331,54 @@ function StartupEditForm() {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent, statusOverride?: "draft" | "published") => {
         e.preventDefault();
         setIsLoading(true);
         try {
+            const persistedDescription = formData.content?.trim() || formData.description?.trim() || "";
+            const { content, sector, stage, ...restFormData } = formData;
+            const nextStatus = statusOverride || formData.status;
             const cleanData = {
-                ...formData,
+                ...restFormData,
+                description: persistedDescription,
+                status: nextStatus,
                 founded_year: formData.founded_year ? parseInt(formData.founded_year.toString()) : undefined,
-                funding_stage: formData.stage,
-                industry_tags: formData.industry_tags.length > 0 ? formData.industry_tags : (formData.sector ? [formData.sector] : []),
+                funding_stage: stage,
+                industry_tags: formData.industry_tags.length > 0 ? formData.industry_tags : (sector ? [sector] : []),
             };
             if (submissionId) {
                 (cleanData as any).submission_id = submissionId;
             }
 
+            if (nextStatus !== formData.status) {
+                setFormData(prev => ({ ...prev, status: nextStatus }));
+            }
+
+            console.log("[StartupEdit] submitting startup payload", {
+                startupSlug,
+                submissionId,
+                rawFormData: formData,
+                cleanData,
+                persistedDescriptionPreview: persistedDescription.slice(0, 300),
+            });
+
             if (startupSlug && startupSlug !== 'new' && !submissionId) {
-                await startupsApi.update(startupSlug, cleanData);
+                const updateResult = await startupsApi.update(startupSlug, cleanData);
+                console.log("[StartupEdit] update result", updateResult);
                 toast.success("Startup updated successfully");
             } else {
-                await startupsApi.create(cleanData);
+                const createResult = await startupsApi.create(cleanData);
+                console.log("[StartupEdit] create result", createResult);
                 toast.success("Startup created successfully");
             }
 
             router.push("/dashboard/startups");
         } catch (err: any) {
-            console.error(err);
+            console.error("[StartupEdit] save failed", err);
             toast.error(err.message || "Failed to save startup");
         } finally {
             setIsLoading(false);
+            setSaveMode("default");
         }
     };
 
@@ -339,7 +414,7 @@ function StartupEditForm() {
         setIsGenerating(true);
         try {
             const title = formData.name;
-            const description = formData.description || formData.excerpt || formData.name;
+            const description = stripHtml(formData.content || formData.description || formData.name);
             const content = formData.content || formData.description || formData.name;
 
             const template = await getPromptTemplate("Startup SEO Generator");
@@ -543,16 +618,6 @@ function StartupEditForm() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Excerpt (TL;DR)</Label>
-                                    <Textarea
-                                        placeholder="Brief summary that appears at the top..."
-                                        className="min-h-[100px] px-3 py-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 resize-none leading-relaxed transition-all text-sm"
-                                        value={formData.excerpt !== undefined ? formData.excerpt : formData.description}
-                                        onChange={(e) => setFormData({ ...formData, excerpt: e.target.value, description: e.target.value })}
-                                    />
-                                </div>
-
                                 {/* Logo & OG Image */}
                                 <div className="grid grid-cols-2 gap-5">
                                     <div className="space-y-1.5">
@@ -685,21 +750,22 @@ function StartupEditForm() {
                             </motion.div>
                         )}
 
-                        {/* Startup Journey Editor */}
+                        {/* Startup Description Editor */}
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
                             <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
                                 <div className="flex items-center gap-2.5">
                                     <div className="h-6 w-6 rounded-lg bg-indigo-600 flex items-center justify-center">
                                         <Sparkles className="h-3 w-3 text-white" />
                                     </div>
-                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Startup Journey</span>
+                                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Startup Description</span>
                                 </div>
+                                <span className="text-[10px] font-medium text-zinc-400">Saved to the startup description field</span>
                             </div>
                             <div className="p-0">
                                 <RichTextEditor
                                     content={formData.content}
-                                    onChange={(val) => setFormData({ ...formData, content: val })}
-                                    placeholder="Write the full startup journey..."
+                                    onChange={(val) => setFormData({ ...formData, content: val, description: val })}
+                                    placeholder="Write the full startup description..."
                                 />
                             </div>
                         </div>
@@ -1142,16 +1208,41 @@ function StartupEditForm() {
                         >
                             <div className="space-y-3">
                                 <Button
-                                    type="submit"
-                                    className="w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full h-11 rounded-xl text-[10px] font-black uppercase tracking-[0.18em] border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 transition-all hover:scale-[1.01] active:scale-95"
                                     disabled={isLoading}
+                                    onClick={(e) => {
+                                        setSaveMode("draft");
+                                        setFormData(prev => ({ ...prev, status: "draft" }));
+                                        void handleSubmit(e as unknown as React.FormEvent, "draft");
+                                    }}
                                 >
-                                    {isLoading ? (
+                                    {isLoading && saveMode === "draft" ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
                                         <div className="flex items-center gap-2">
                                             <Save className="h-4 w-4" />
-                                            <span>{startupSlug && startupSlug !== 'new' && !submissionId ? 'Update' : 'Save'}</span>
+                                            <span>Save As Draft</span>
+                                        </div>
+                                    )}
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    className="w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                                    disabled={isLoading}
+                                    onClick={() => setSaveMode("default")}
+                                >
+                                    {isLoading && saveMode !== "draft" ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <Save className="h-4 w-4" />
+                                            <span>
+                                                {formData.status === "draft"
+                                                    ? "Publish Changes"
+                                                    : (startupSlug && startupSlug !== 'new' && !submissionId ? 'Update' : 'Save')}
+                                            </span>
                                         </div>
                                     )}
                                 </Button>

@@ -34,13 +34,13 @@
 
 // // export default nextConfig;
 
-/** Backend origin for rewrites (no trailing slash). Override via BACKEND_ORIGIN or derive from NEXT_PUBLIC_API_URL. */
+/** Backend origin for rewrites (no trailing slash). Override via BACKEND_ORIGIN or derive from the public API URL env vars. */
 function getBackendOrigin() {
   const explicit = process.env.BACKEND_ORIGIN || process.env.NEXT_PUBLIC_BACKEND_ORIGIN;
   if (explicit) {
     return explicit.replace(/\/$/, "");
   }
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
   if (apiUrl) {
     const trimmed = apiUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
     if (trimmed) return trimmed;

@@ -12,6 +12,12 @@ import { fetchAPI, pagesApi } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+const PREVIEW_SITE_URL =
+    process.env.NEXT_PUBLIC_FRONTEND_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    "http://localhost:3000";
+
 export default function DashboardPagesPage() {
     const router = useRouter();
     const [pages, setPages] = useState<any[]>([]);
@@ -183,7 +189,7 @@ export default function DashboardPagesPage() {
                                             <td className="px-5 py-3.5">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button
-                                                        onClick={() => window.open(`${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'}${p.slug && !['home', 'homepage'].includes(p.slug.toLowerCase()) ? `/${p.slug}` : '/'}`, "_blank")}
+                                                        onClick={() => window.open(`${PREVIEW_SITE_URL}${p.slug && !['home', 'homepage'].includes(p.slug.toLowerCase()) ? `/${p.slug}` : '/'}`, "_blank")}
                                                         className="h-8 w-8 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 flex items-center justify-center transition-all"
                                                         title="View Live"
                                                     >

@@ -56,6 +56,7 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { API_BASE_URL } from "@/lib/api"
 
 // Icon map for nav items
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -137,7 +138,7 @@ export default function UnifiedMenuPage({ params }: { params: Promise<{ position
 
     const loadSiteSettings = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/layout-settings/`)
+            const res = await fetch(`${API_BASE_URL}/layout-settings/`, { credentials: "include" })
             if (res.ok) {
                 const data = await res.json()
                 setSiteSettings(data)
@@ -152,13 +153,13 @@ export default function UnifiedMenuPage({ params }: { params: Promise<{ position
     const fetchData = async () => {
         setIsLoading(true)
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/?position=${position}`)
+            const res = await fetch(`${API_BASE_URL}/navigation/?position=${position}`, { credentials: "include" })
             if (res.ok) {
                 const data = await res.json()
                 setItems(data)
             }
 
-            const posRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/positions/`)
+            const posRes = await fetch(`${API_BASE_URL}/navigation/positions/`, { credentials: "include" })
             if (posRes.ok) {
                 const posData = await posRes.json()
                 const current = posData.find((p: any) => p.id === position)
@@ -174,8 +175,8 @@ export default function UnifiedMenuPage({ params }: { params: Promise<{ position
     const loadResources = async () => {
         try {
             const [pRes, cRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/pages/`),
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories/`)
+                fetch(`${API_BASE_URL}/pages/`, { credentials: "include" }),
+                fetch(`${API_BASE_URL}/categories/`, { credentials: "include" })
             ])
             if (pRes.ok) setPages(await pRes.json())
             if (cRes.ok) setCategories(await cRes.json())
@@ -200,9 +201,10 @@ export default function UnifiedMenuPage({ params }: { params: Promise<{ position
             formData.append("site_name", siteName)
             if (logoFile) formData.append("site_logo", logoFile)
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/layout-settings/update/`, {
+            const res = await fetch(`${API_BASE_URL}/layout-settings/update/`, {
                 method: "PATCH",
                 body: formData,
+                credentials: "include",
             })
             if (res.ok) {
                 toast.success("Site settings saved!")
@@ -221,8 +223,9 @@ export default function UnifiedMenuPage({ params }: { params: Promise<{ position
     const handleDelete = async (id: number) => {
         if (!confirm("Delete this menu item and its sub-items?")) return
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/${id}/`, {
-                method: "DELETE"
+            const res = await fetch(`${API_BASE_URL}/navigation/${id}/`, {
+                method: "DELETE",
+                credentials: "include",
             })
             if (res.ok) {
                 setItems((prev) => prev.filter((i) => i.id !== id))
@@ -262,9 +265,10 @@ export default function UnifiedMenuPage({ params }: { params: Promise<{ position
         e.preventDefault()
         setIsSaving(true)
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/create/`, {
+            const res = await fetch(`${API_BASE_URL}/navigation/create/`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     ...newFormData,
                     position,

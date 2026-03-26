@@ -30,10 +30,10 @@ import {
     getNewsletterSubscribers,
     newsletterTemplatesApi,
     getTrendingStories,
-    API_BASE_URL,
     deleteNewsletterSubscriber,
     toggleBlockSubscriber,
-    sendTestAdminAlert
+    sendTestAdminAlert,
+    uploadMediaItem
 } from "@/lib/api";
 import {
     AlertDialog,
@@ -67,7 +67,25 @@ export default function NewsletterPage() {
     const [activeTemplate, setActiveTemplate] = useState<any>(null);
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+    const [isDeletingTemplateId, setIsDeletingTemplateId] = useState<number | null>(null);
+    const [isUploadingLogo, setIsUploadingLogo] = useState(false);
     const [trendingStories, setTrendingStories] = useState<any[]>([]);
+
+    const createTemplateDraft = () => ({
+        name: "Default Newsletter",
+        subject_format: "StartupSaga Weekly: {first_story_title}",
+        header_title: "StartupSaga",
+        header_subtitle: "Weekly stories, founder insights, and ecosystem updates",
+        body_intro: "Top Stories This Week",
+        body_text: "<p>Welcome to our weekly community roundup! We've gathered the most impactful stories and insights to keep you ahead in the startup ecosystem.</p>",
+        admin_body_intro: "Fresh Lead",
+        admin_body_text: "<p>A user has just subscribed to the newsletter:</p>",
+        footer_text: "© {year} StartupSaga. All rights reserved.\nYou received this email because you subscribed to our newsletter.",
+        accent_color: "#9333ea",
+        is_active: true,
+        font_family: "'Inter', sans-serif",
+        logo_url: "",
+    });
 
     const loadSubscribers = async (showLoading = true) => {
         if (showLoading) setIsLoadingSubscribers(true);

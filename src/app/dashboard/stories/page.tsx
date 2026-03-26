@@ -48,6 +48,12 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+const PREVIEW_SITE_URL =
+    process.env.NEXT_PUBLIC_FRONTEND_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    "http://localhost:3000";
+
 export default function StoriesPage() {
     const router = useRouter();
     const [stories, setStories] = useState<Story[]>([]);
@@ -323,7 +329,7 @@ export default function StoriesPage() {
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <button
-                                                    onClick={() => window.open(`${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'}/stories/${story.slug}`, "_blank")}
+                                                    onClick={() => window.open(`${PREVIEW_SITE_URL}/stories/${story.slug}`, "_blank")}
                                                     title="Preview"
                                                     className="h-8 w-8 rounded-lg bg-sky-100 hover:bg-sky-500 text-sky-600 hover:text-white transition-all flex items-center justify-center"
                                                 >

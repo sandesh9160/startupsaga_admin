@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/lib/api";
 
 export default function NewMenuItem({ params }: { params: Promise<{ position: string }> }) {
     const { position } = use(params);
@@ -29,8 +30,8 @@ export default function NewMenuItem({ params }: { params: Promise<{ position: st
         const loadResources = async () => {
             try {
                 const [pRes, cRes] = await Promise.all([
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/pages/`),
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories/`)
+                    fetch(`${API_BASE_URL}/pages/`, { credentials: "include" }),
+                    fetch(`${API_BASE_URL}/categories/`, { credentials: "include" })
                 ]);
                 if (pRes.ok) setPages(await pRes.json());
                 if (cRes.ok) setCategories(await cRes.json());
@@ -71,9 +72,10 @@ export default function NewMenuItem({ params }: { params: Promise<{ position: st
         setIsLoading(true);
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/create/`, {
+            const res = await fetch(`${API_BASE_URL}/navigation/create/`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     ...formData,
                     position,

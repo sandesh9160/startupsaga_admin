@@ -60,6 +60,7 @@ import { DashboardPagination } from "@/components/dashboard/Pagination";
 export default function SubmissionsPage() {
     const router = useRouter();
     const [submissions, setSubmissions] = useState<any[]>([]);
+    const [statusUpdating, setStatusUpdating] = useState<Record<number, 'approved' | 'rejected' | 'pending' | null>>({});
     const [submissionToDelete, setSubmissionToDelete] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -95,14 +96,39 @@ export default function SubmissionsPage() {
         loadSubmissions();
     }, [currentPage, searchQuery, statusFilter]);
 
+    const getNextVisibleSubmissions = (
+        current: any[],
+        id: number,
+        nextStatus: 'approved' | 'rejected' | 'pending'
+    ) => {
+        if (statusFilter !== 'all' && statusFilter !== nextStatus) {
+            return current.filter((submission) => submission.id !== id);
+        }
+
+        return current.map((submission) =>
+            submission.id === id ? { ...submission, status: nextStatus } : submission
+        );
+    };
+
     const handleStatusUpdate = async (id: number, status: 'approved' | 'rejected' | 'pending') => {
+        const previousSubmissions = submissions;
+        setStatusUpdating((prev) => ({ ...prev, [id]: status }));
+        setSubmissions((prev) => getNextVisibleSubmissions(prev, id, status));
+
         try {
             await updateSubmissionStatus(id, status);
             loadSubmissions(false);
             toast.success(`Entry ${status === 'approved' ? 'Verified' : 'Archived'}`);
         } catch (err) {
+            setSubmissions(previousSubmissions);
             console.error(err);
             toast.error("Operation failed");
+        } finally {
+            setStatusUpdating((prev) => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
         }
     };
 
@@ -128,7 +154,7 @@ export default function SubmissionsPage() {
 
     return (
         <div className="min-h-screen bg-white text-zinc-900 font-sans pb-8">
-            <div className="max-w-[1400px] mx-auto p-4 lg:p-8 space-y-8 flex flex-col min-h-[85vh]">
+            <div className="max-w-[1480px] mx-auto p-4 lg:p-8 space-y-8 flex flex-col min-h-[85vh]">
 
                 {/* --- HEADER --- */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-2 rounded-xl bg-zinc-50 border border-zinc-100 shadow-sm">
@@ -191,10 +217,13 @@ export default function SubmissionsPage() {
                 </div>
 
                 {/* CONTENT */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+                <div
+                    className="grid gap-5 items-stretch"
+                    style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 320px))" }}
+                >
                     {isLoading && submissions.length === 0 ? (
                         [...Array(16)].map((_, i) => (
-                            <div key={i} className="h-56 rounded-lg bg-white border border-slate-100 shadow-sm animate-pulse" />
+                            <div key={i} className="h-[340px] rounded-[24px] bg-white border border-slate-100 shadow-sm animate-pulse" />
                         ))
                     ) : filteredSubmissions.length === 0 ? (
                         <div className="col-span-full flex flex-col items-center justify-center p-12 text-center rounded-xl bg-zinc-50 border border-dashed border-zinc-200">
@@ -207,34 +236,38 @@ export default function SubmissionsPage() {
                     ) : (
                         <AnimatePresence mode="popLayout">
                             {filteredSubmissions.map((submission) => (
+                                (() => {
+                                    const activeStatusUpdate = statusUpdating[submission.id];
+                                    const isStatusBusy = Boolean(activeStatusUpdate);
+
+                                    return (
                                 <motion.div
                                     key={submission.id}
                                     layout
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0, scale: 0.98 }}
-                                    className="group/card relative flex flex-col bg-white rounded-lg border border-zinc-100 shadow-sm hover:border-zinc-300 transition-all duration-150 overflow-hidden"
+                                    className="group/card relative flex w-full min-h-[340px] min-w-0 self-stretch flex-col bg-white rounded-[24px] border border-zinc-200 shadow-[0_16px_40px_rgba(15,23,42,0.06)] hover:border-zinc-300 hover:-translate-y-1 transition-all duration-200 overflow-hidden"
+                                    style={{ width: "100%", minHeight: 340 }}
                                 >
-                                    {/* Ultra Mini Header */}
-                                    <div className="relative h-20 bg-zinc-50 flex items-center justify-center overflow-hidden">
-                                        {submission.thumbnail ? (
+                                    <div className="relative h-32 bg-zinc-50 flex items-center justify-center overflow-hidden">
+                                        {(submission.thumbnail || submission.logo) ? (
                                             <img
-                                                src={getSafeImageSrc(submission.thumbnail)}
+                                                src={getSafeImageSrc(submission.thumbnail || submission.logo)}
                                                 alt={submission.startup_name}
-                                                className="h-full w-full object-cover group-hover/card:scale-105 transition-transform duration-300"
+                                                className="h-full w-full object-cover group-hover/card:scale-105 transition-transform duration-500"
                                             />
                                         ) : (
                                             <div className="h-full w-full flex items-center justify-center bg-zinc-50">
-                                                <Building2 size={24} className="text-zinc-200" />
+                                                <Building2 size={34} className="text-zinc-200" />
                                             </div>
                                         )}
 
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/80 via-[#0F172A]/15 to-transparent" />
 
-                                        {/* Status - Floating micro */}
-                                        <div className="absolute top-1.5 left-1.5 flex flex-col gap-0.5">
+                                        <div className="absolute top-4 left-4 flex flex-col gap-1">
                                             <Badge className={cn(
-                                                "w-fit border-none font-normal text-[7px] uppercase tracking-wider px-1 py-0 shadow-sm",
+                                                "w-fit border-none font-bold text-[10px] uppercase tracking-[0.2em] px-3 py-1 shadow-sm rounded-full",
                                                 submission.status === 'pending'
                                                     ? "bg-amber-500 text-white"
                                                     : submission.status === 'approved'
@@ -245,100 +278,123 @@ export default function SubmissionsPage() {
                                             </Badge>
                                         </div>
 
-                                        {/* Logo - Floating smaller */}
-                                        <div className="absolute top-1.5 right-1.5">
-                                            {submission.logo ? (
-                                                <div className="h-6 w-6 rounded bg-white p-0.5 shadow-sm border border-white/50">
-                                                    <img
-                                                        src={getSafeImageSrc(submission.logo)}
-                                                        alt=""
-                                                        className="w-full h-full object-contain"
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="h-6 w-6 rounded bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
-                                                    <Sparkles className="text-white h-2.5 w-2.5" />
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Minimal Identity Info on Header */}
-                                        <div className="absolute bottom-1.5 left-1.5 right-1.5 text-white">
-                                            <h3 className="text-[10px] font-normal tracking-tight line-clamp-1 drop-shadow-sm">
+                                        <div className="absolute bottom-4 left-4 right-4 text-white">
+                                            <h3 className="text-base font-semibold tracking-tight line-clamp-2 drop-shadow-sm leading-tight">
                                                 {submission.startup_name}
                                             </h3>
+                                            <p className="mt-1 text-xs font-medium text-white/80 truncate">
+                                                {submission.founder_name || "Anonymous founder"}
+                                            </p>
                                         </div>
                                     </div>
 
-                                    {/* Compact Action Layout */}
-                                    <div className="p-1.5 flex flex-col gap-1.5">
-                                        <div className="flex items-center justify-between gap-1 overflow-hidden">
-                                            <span className="text-[9px] font-normal text-zinc-600 truncate">{submission.founder_name || "Anonymous"}</span>
-                                            <span className="text-[8px] font-normal text-zinc-400 shrink-0">
+                                    <div className="flex flex-1 flex-col p-4 gap-3">
+                                        <div className="flex items-center justify-between gap-3 overflow-hidden">
+                                            <span className="text-[13px] font-semibold text-zinc-700 truncate flex items-center gap-2">
+                                                <User size={14} className="text-zinc-400" />
+                                                {submission.founder_name || "Anonymous"}
+                                            </span>
+                                            <span className="text-xs font-medium text-zinc-400 shrink-0">
                                                 {new Date(submission.created_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
                                             </span>
                                         </div>
 
-                                        {/* Metadata Row */}
-                                        <div className="flex items-center gap-1 min-h-[12px] overflow-hidden">
-                                            <span className="text-[8px] font-normal text-zinc-400 uppercase tracking-tighter truncate">
+                                        <div className="flex flex-wrap items-center gap-2 min-h-[22px] overflow-hidden">
+                                            <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500">
                                                 {submission.category || "No Category"}
                                             </span>
-                                            <span className="text-zinc-200">|</span>
-                                            <span className="text-[8px] font-normal text-zinc-400 flex items-center gap-0.5 truncate">
-                                                <MapPin size={7} />
+                                            <span className="text-[11px] font-medium text-zinc-400 flex items-center gap-1 truncate">
+                                                <MapPin size={12} />
                                                 {submission.city || "Remote"}
                                             </span>
                                         </div>
 
-                                        {/* Ultra Compact Actions */}
-                                        <div className="flex items-center gap-1 pt-1.5 border-t border-zinc-50">
+                                        <div className="mt-auto pt-3 border-t border-zinc-100 space-y-2.5">
                                             {submission.status === 'pending' ? (
-                                                <div className="flex gap-1 flex-1">
+                                                <div className="grid grid-cols-2 gap-2">
                                                     <button
                                                         onClick={() => handleStatusUpdate(submission.id, 'approved')}
-                                                        className="flex-1 h-6 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[8px] font-normal uppercase tracking-tight flex items-center justify-center gap-1 transition-all"
+                                                        disabled={isStatusBusy}
+                                                        className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold uppercase tracking-[0.14em] flex items-center justify-center gap-1.5 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                                                     >
-                                                        <CheckCircle2 size={10} />
-                                                        Verify
+                                                        {activeStatusUpdate === 'approved' ? <Clock size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                                                        {activeStatusUpdate === 'approved' ? 'Approving' : 'Approve'}
                                                     </button>
                                                     <button
                                                         onClick={() => handleStatusUpdate(submission.id, 'rejected')}
-                                                        className="h-6 w-6 rounded bg-zinc-50 hover:bg-rose-50 text-zinc-400 hover:text-rose-600 flex items-center justify-center transition-all border border-zinc-100"
-                                                        title="Dismiss"
+                                                        disabled={isStatusBusy}
+                                                        className="h-10 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[9px] font-bold uppercase tracking-[0.14em] flex items-center justify-center gap-1.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                                        title="Reject"
                                                     >
-                                                        <XCircle size={10} />
+                                                        {activeStatusUpdate === 'rejected' ? <Clock size={14} className="animate-spin" /> : <XCircle size={14} />}
+                                                        {activeStatusUpdate === 'rejected' ? 'Rejecting' : 'Reject'}
                                                     </button>
                                                 </div>
-                                            ) : submission.status === 'approved' && (
-                                                <button
-                                                    onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=startup`)}
-                                                    className="flex-1 h-6 rounded bg-purple-600 hover:bg-purple-700 text-white text-[8px] font-normal uppercase tracking-tight flex items-center justify-center gap-1 transition-all"
-                                                >
-                                                    <Building2 size={10} />
-                                                    Base
-                                                </button>
+                                            ) : (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(submission.id, submission.status === 'approved' ? 'pending' : 'approved')}
+                                                        disabled={isStatusBusy}
+                                                        className={cn(
+                                                            "h-10 rounded-xl text-[9px] font-bold uppercase tracking-[0.14em] flex items-center justify-center gap-1.5 transition-all border disabled:opacity-60 disabled:cursor-not-allowed",
+                                                            submission.status === 'approved'
+                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                                                : "bg-zinc-50 text-zinc-600 border-zinc-200 hover:bg-zinc-100"
+                                                        )}
+                                                    >
+                                                        {activeStatusUpdate === 'approved' || activeStatusUpdate === 'pending'
+                                                            ? <Clock size={14} className="animate-spin" />
+                                                            : <CheckCircle2 size={14} />}
+                                                        {activeStatusUpdate === 'approved'
+                                                            ? 'Approving'
+                                                            : activeStatusUpdate === 'pending'
+                                                                ? 'Moving'
+                                                                : submission.status === 'approved'
+                                                                    ? 'Approved'
+                                                                    : 'Pending'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(submission.id, 'rejected')}
+                                                        disabled={isStatusBusy}
+                                                        className="h-10 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[9px] font-bold uppercase tracking-[0.14em] flex items-center justify-center gap-1.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    >
+                                                        {activeStatusUpdate === 'rejected' ? <Clock size={14} className="animate-spin" /> : <XCircle size={14} />}
+                                                        {activeStatusUpdate === 'rejected' ? 'Rejecting' : 'Reject'}
+                                                    </button>
+                                                </div>
                                             )}
 
-                                            <div className="flex items-center gap-1">
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <button
+                                                    onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=startup`)}
+                                                    className="h-10 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[8px] font-bold uppercase tracking-[0.12em] flex items-center justify-center gap-1 transition-all shadow-sm"
+                                                    title="Create Startup"
+                                                >
+                                                    <Building2 size={14} />
+                                                    Startup
+                                                </button>
                                                 <button
                                                     onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=submission`)}
-                                                    className="h-6 w-6 rounded bg-zinc-50 hover:bg-zinc-100 text-zinc-500 border border-zinc-100 flex items-center justify-center transition-all"
-                                                    title="Refine Data"
+                                                    className="h-10 rounded-xl bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-200 text-[8px] font-bold uppercase tracking-[0.12em] flex items-center justify-center gap-1 transition-all"
+                                                    title="Edit Submission"
                                                 >
-                                                    <Edit size={10} />
+                                                    <Edit size={14} />
+                                                    Edit
                                                 </button>
                                                 <button
                                                     onClick={() => router.push(`/dashboard/stories/new?submission=${submission.id}&type=story`)}
-                                                    className="h-6 w-6 rounded bg-zinc-50 hover:bg-indigo-50 text-indigo-600 border border-zinc-100 flex items-center justify-center transition-all"
+                                                    className="h-10 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[8px] font-bold uppercase tracking-[0.12em] flex items-center justify-center gap-1 transition-all"
                                                     title="Write Feature"
                                                 >
-                                                    <FileText size={10} />
+                                                    <FileText size={14} />
+                                                    Write
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
                                 </motion.div>
+                                    );
+                                })()
                             ))}
                         </AnimatePresence>
                     )}

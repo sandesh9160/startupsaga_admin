@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL } from "@/lib/api";
 
 export default function EditMenuItem({ params }: { params: Promise<{ position: string, itemId: string }> }) {
     const { position, itemId } = use(params);
@@ -49,9 +50,9 @@ export default function EditMenuItem({ params }: { params: Promise<{ position: s
         const loadResources = async () => {
             try {
                 const [pRes, cRes, mRes] = await Promise.all([
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/pages/`),
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories/`),
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/?position=${position}`)
+                    fetch(`${API_BASE_URL}/pages/`, { credentials: "include" }),
+                    fetch(`${API_BASE_URL}/categories/`, { credentials: "include" }),
+                    fetch(`${API_BASE_URL}/navigation/?position=${position}`, { credentials: "include" })
                 ]);
                 if (pRes.ok) setPages(await pRes.json());
                 if (cRes.ok) setCategories(await cRes.json());
@@ -70,7 +71,7 @@ export default function EditMenuItem({ params }: { params: Promise<{ position: s
     const fetchItem = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/${itemId}/`);
+            const res = await fetch(`${API_BASE_URL}/navigation/${itemId}/`, { credentials: "include" });
             if (res.ok) {
                 const data = await res.json();
                 setFormData({
@@ -139,9 +140,10 @@ export default function EditMenuItem({ params }: { params: Promise<{ position: s
             );
 
             // Also update the swapped item on the server
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/${swapItem.id}/`, {
+            fetch(`${API_BASE_URL}/navigation/${swapItem.id}/`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({ order: oldOrderNum }),
             }).catch(() => { });
         }
@@ -154,9 +156,10 @@ export default function EditMenuItem({ params }: { params: Promise<{ position: s
         setIsSaving(true);
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/${itemId}/`, {
+            const res = await fetch(`${API_BASE_URL}/navigation/${itemId}/`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     ...formData,
                     position,
@@ -178,7 +181,7 @@ export default function EditMenuItem({ params }: { params: Promise<{ position: s
     const handleDelete = async () => {
         if (!confirm("Delete this menu item? This action cannot be undone.")) return;
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/navigation/${itemId}/`, { method: "DELETE" });
+            const res = await fetch(`${API_BASE_URL}/navigation/${itemId}/`, { method: "DELETE", credentials: "include" });
             if (res.ok) {
                 toast.success("Item deleted");
                 router.push(`/dashboard/menus/${position}`);

@@ -61,7 +61,8 @@ export default function EditCategoryPage() {
         description: "",
         iconName: "help-circle",
         meta_title: "",
-        meta_description: ""
+        meta_description: "",
+        meta_keywords: ""
     });
 
     useEffect(() => {
@@ -82,8 +83,9 @@ export default function EditCategoryPage() {
                     slug: category.slug || "",
                     description: category.description || "",
                     iconName: category.iconName || "help-circle",
-                    meta_title: "",
-                    meta_description: ""
+                    meta_title: category.meta_title || "",
+                    meta_description: category.meta_description || "",
+                    meta_keywords: category.meta_keywords || ""
                 });
             } else {
                 toast.error("Category not found");
@@ -119,7 +121,8 @@ export default function EditCategoryPage() {
                 ...prev,
                 description: descResult.content ? descResult.content.trim() : prev.description,
                 meta_title: seoResult.meta_title || `${formData.name} Startups | Ecosystem Directory`,
-                meta_description: seoResult.meta_description || descResult.content || ""
+                meta_description: seoResult.meta_description || descResult.content || "",
+                meta_keywords: seoResult.meta_keywords || prev.meta_keywords
             }));
 
             toast.success("Content generated with AI");
@@ -321,6 +324,15 @@ export default function EditCategoryPage() {
                                     className="min-h-[100px] px-3 py-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 resize-none"
                                     value={formData.meta_description}
                                     onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-zinc-700">Meta Keywords</Label>
+                                <Textarea
+                                    placeholder="AI startups, artificial intelligence, Indian startup ecosystem"
+                                    className="min-h-[88px] px-3 py-3 rounded-xl border-zinc-200 bg-white focus:ring-2 focus:ring-primary/10 resize-none"
+                                    value={formData.meta_keywords}
+                                    onChange={(e) => setFormData({ ...formData, meta_keywords: e.target.value })}
                                 />
                             </div>
                         </div>
